@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>PrizePicks Demo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg:#0d0d14; --bg2:#13131f; --bg3:#1a1a2a;
+    --border:#ffffff10; --accent:#8b5cf6;
+    --green:#22c55e; --red:#ef4444; --gold:#f59e0b;
+    --text:#f0eeff; --sub:#6b6b8a;
+  }
+  html, body {
+    background: var(--bg);
+    font-family: -apple-system, 'SF Pro Text', sans-serif;
+    user-select: none;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+  #wrap {
+    background: rgba(12,12,20,0.97);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    width: 380px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+  }
+  #header {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  #header-left { display: flex; align-items: center; gap: 8px; }
+  #header-title { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sub); }
+  #header-dots { display: flex; gap: 4px; align-items: center; }
+  .hdot { width: 7px; height: 7px; border-radius: 50%; }
+  .hdot.won  { background: var(--green); box-shadow: 0 0 5px #22c55e88; }
+  .hdot.lost { background: var(--red);   box-shadow: 0 0 5px #ef444488; }
+  .hdot.live { background: var(--gold);  animation: pulse 1.4s infinite; }
+  .hdot.pre  { background: var(--sub); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  #header-right { display: flex; align-items: center; gap: 10px; }
+  #wl { font-size: 12px; font-weight: 700; display: flex; gap: 6px; }
+  .wl-w { color: var(--green); } .wl-l { color: var(--red); }
+  .entry-hdr {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 14px 6px; border-bottom: 1px solid var(--border);
+  }
+  .entry-amt { font-size: 11px; font-weight: 700; color: var(--sub); }
+  .entry-amt span { color: var(--gold); }
+  .entry-rec { font-size: 11px; display: flex; gap: 6px; }
+  .entry-rec .w { color: var(--green); font-weight: 700; }
+  .entry-rec .l { color: var(--red); font-weight: 700; }
+  .pick {
+    display: grid; grid-template-columns: 48px 1fr 68px;
+    gap: 10px; padding: 10px 14px;
+    border-bottom: 1px solid var(--border); align-items: center;
+  }
+  .pick:hover { background: rgba(255,255,255,0.025); }
+  .av {
+    width: 44px; height: 44px; border-radius: 50%;
+    object-fit: cover; border: 2px solid var(--border);
+    background: var(--bg3); flex-shrink: 0; font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .av.won-r  { border-color: var(--green); box-shadow: 0 0 8px #22c55e55; }
+  .av.lost-r { border-color: var(--red);   box-shadow: 0 0 8px #ef444455; }
+  .av.live-r { border-color: rgba(255,255,255,0.45); }
+  .mid { min-width: 0; }
+  .name-row { display: flex; align-items: center; gap: 5px; margin-bottom: 2px; }
+  .pname { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pbadge { font-size: 9px; font-weight: 600; color: var(--sub); background: var(--bg3); padding: 1px 4px; border-radius: 3px; flex-shrink: 0; }
+  .game-row { font-size: 10px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 5px; }
+  .league-tag { background: var(--bg3); padding: 1px 4px; border-radius: 3px; font-weight: 600; margin-right: 3px; }
+  .live-tag { color: var(--gold); font-weight: 600; }
+  .prog-track { height: 3px; background: var(--bg3); border-radius: 2px; position: relative; margin-bottom: 3px; }
+  .prog-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+  .prog-fill.green  { background: var(--green); }
+  .prog-fill.red    { background: var(--red); }
+  .prog-fill.purple { background: var(--accent); }
+  .prog-labels { display: flex; justify-content: space-between; font-size: 9px; font-weight: 600; }
+  .prog-labels .cur { color: var(--text); } .prog-labels .lv { color: var(--sub); }
+  .linebox {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 10px; padding: 6px 8px; text-align: center; flex-shrink: 0;
+  }
+  .linebox.won-box  { border-color: #22c55e44; background: #22c55e0d; }
+  .linebox.lost-box { border-color: #ef444444; background: #ef44440d; }
+  .dir { font-size: 14px; line-height: 1; margin-bottom: 1px; }
+  .dir.up { color: var(--green); } .dir.down { color: var(--red); }
+  .linenum { font-size: 14px; font-weight: 800; color: var(--text); line-height: 1; }
+  .statlbl { font-size: 8px; font-weight: 600; color: var(--sub); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px; }
+  .res-lbl { font-size: 9px; font-weight: 800; margin-top: 2px; }
+  .res-lbl.w { color: var(--green); } .res-lbl.l { color: var(--red); }
+  .demo-note {
+    text-align: center; padding: 12px;
+    font-size: 10px; color: var(--sub);
+    border-top: 1px solid var(--border);
+    letter-spacing: 0.04em;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="header">
+    <div id="header-left">
+      <div id="header-title">PrizePicks</div>
+      <div id="header-dots">
+        <div class="hdot won"></div>
+        <div class="hdot lost"></div>
+        <div class="hdot live"></div>
+        <div class="hdot pre"></div>
+      </div>
+    </div>
+    <div id="header-right">
+      <div id="wl"><span class="wl-w">1W</span><span class="wl-l">1L</span></div>
+    </div>
+  </div>
+
+  <!-- Entry -->
+  <div class="entry-hdr">
+    <div class="entry-amt">$5 <span>→ $13.00</span></div>
+    <div class="entry-rec"><span class="w">1W</span><span class="l">1L</span><span>2 live</span></div>
+  </div>
+
+  <!-- Pick 1: WON -->
+  <div class="pick">
+    <div class="av won-r">🏀</div>
+    <div class="mid">
+      <div class="name-row">
+        <div class="pname">Luka Dončić</div>
+        <div class="pbadge">G-F</div>
+      </div>
+      <div class="game-row"><span class="league-tag">NBA</span>LAL 112 @ DET 98 <span class="live-tag">FINAL</span></div>
+      <div class="prog-track"><div class="prog-fill green" style="width:100%"></div></div>
+      <div class="prog-labels"><span class="cur">32</span><span class="lv">/ 24.5</span></div>
+    </div>
+    <div class="linebox won-box">
+      <div class="dir up">↑</div>
+      <div class="linenum">24.5</div>
+      <div class="statlbl">👹 Points</div>
+      <div class="res-lbl w">✓ WON</div>
+    </div>
+  </div>
+
+  <!-- Pick 2: LOST -->
+  <div class="pick">
+    <div class="av lost-r">🏀</div>
+    <div class="mid">
+      <div class="name-row">
+        <div class="pname">Bam Adebayo</div>
+        <div class="pbadge">C-F</div>
+      </div>
+      <div class="game-row"><span class="league-tag">NBA</span>SAS 136 @ MIA 111 <span class="live-tag">FINAL</span></div>
+      <div class="prog-track"><div class="prog-fill red" style="width:92%"></div></div>
+      <div class="prog-labels"><span class="cur">18</span><span class="lv">/ 19.5</span></div>
+    </div>
+    <div class="linebox lost-box">
+      <div class="dir up">↑</div>
+      <div class="linenum">19.5</div>
+      <div class="statlbl">👺 Points</div>
+      <div class="res-lbl l">✗ LOST</div>
+    </div>
+  </div>
+
+  <!-- Pick 3: LIVE winning -->
+  <div class="pick">
+    <div class="av live-r">🏀</div>
+    <div class="mid">
+      <div class="name-row">
+        <div class="pname">Shai Gilgeous-Alexander</div>
+        <div class="pbadge">G</div>
+      </div>
+      <div class="game-row"><span class="league-tag">NBA</span>OKC 89 @ DEN 74 <span class="live-tag">Q3 · 4:22</span></div>
+      <div class="prog-track"><div class="prog-fill green" style="width:74%"></div></div>
+      <div class="prog-labels"><span class="cur">22</span><span class="lv">/ 29.5</span></div>
+    </div>
+    <div class="linebox">
+      <div class="dir up">↑</div>
+      <div class="linenum">29.5</div>
+      <div class="statlbl">Points</div>
+    </div>
+  </div>
+
+  <!-- Pick 4: LIVE losing -->
+  <div class="pick">
+    <div class="av live-r">🏀</div>
+    <div class="mid">
+      <div class="name-row">
+        <div class="pname">Nikola Jokić</div>
+        <div class="pbadge">C</div>
+      </div>
+      <div class="game-row"><span class="league-tag">NBA</span>OKC 89 @ DEN 74 <span class="live-tag">Q3 · 4:22</span></div>
+      <div class="prog-track"><div class="prog-fill purple" style="width:40%"></div></div>
+      <div class="prog-labels"><span class="cur">6</span><span class="lv">/ 14.5</span></div>
+    </div>
+    <div class="linebox">
+      <div class="dir down">↓</div>
+      <div class="linenum">14.5</div>
+      <div class="statlbl">👹 Assists</div>
+    </div>
+  </div>
+
+  <div class="demo-note">⚠ DEMO MODE — not connected to your account</div>
+</div>
+</body>
+</html>

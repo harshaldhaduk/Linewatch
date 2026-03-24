@@ -1,0 +1,12 @@
+{
+  "name": "prizepicks-overlay",
+  "version": "2.0.0",
+  "description": "PrizePicks menu bar app",
+  "main": "main.js",
+  "scripts": {
+    "start": "./node_modules/.bin/electron ."
+  },
+  "dependencies": {
+    "electron": "^28.0.0"
+  }
+}
