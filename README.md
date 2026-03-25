@@ -1,4 +1,4 @@
-# PrizePicks Overlay
+# Linewatch
 
 macOS menu bar app that shows your active PrizePicks picks as live text (`2W 1L 3O`).
 Click to see a popup with player photos, live scores, and progress bars. Supports 2 accounts.
