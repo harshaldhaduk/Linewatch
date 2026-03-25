@@ -270,9 +270,9 @@ function pickHtml(p) {
   const isDone2 = p.gameFinished;
   const isLive2 = p.inGame && !isDone2 && !isWon && !isLost;
   let ringCls = '';
-  if (isWon || (isDone2 && winning2))        ringCls = 'won-r';
-  else if (isLost || (isDone2 && !winning2)) ringCls = 'lost-r';
-  else if (isLive2)                          ringCls = 'live-r';
+  if (isWon || (isDone2 && winning2) || (isLive2 && winning2)) ringCls = 'won-r';
+  else if (isLost || (isDone2 && !winning2))                   ringCls = 'lost-r';
+  else if (isLive2 && !winning2)                               ringCls = 'live-r';
   const boxCls  = isWon ? 'won-box' : isLost ? 'lost-box' : '';
 
   const avHtml = p.imgUrl
@@ -295,9 +295,9 @@ function pickHtml(p) {
     const win_f = p.wagerType==='over' ? cur_f>=lin_f : cur_f<=lin_f;
     const done_f = p.gameFinished, live_f = p.inGame && !done_f;
     let fc = 'c-grey';
-    if (isWon||(done_f&&win_f))         fc='c-green';
-    else if (isLost||(done_f&&!win_f))  fc='c-red';
-    else if (live_f&&win_f)             fc='c-white';
+    if (isWon||(done_f&&win_f)||(live_f&&win_f))  fc='c-green';
+    else if (isLost||(done_f&&!win_f))            fc='c-red';
+    else if (live_f&&!win_f)                      fc='c-white';
     progHtml = `<div class="prog-track"><div class="prog-fill ${fc}" style="width:${pct}%"></div></div>
     <div class="prog-labels"><span class="cur">${cur%1===0?cur:cur.toFixed(1)}</span><span class="lv">/ ${lin}</span></div>`;
   }

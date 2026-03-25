@@ -253,27 +253,26 @@ function pickHtml(p) {
   const winning = p.wagerType === 'over' ? cur >= lin : cur <= lin;
 
   // Ring logic:
-  // - game over + winning = green (no pulse)
-  // - game over + losing  = red (no pulse)
-  // - in-game             = white pulse (regardless of crossing — it just shows it's live)
-  // - pre-game / not started = no ring
+  // - game over + winning OR live + winning = green (no pulse)
+  // - game over + losing = red (no pulse)
+  // - live + losing = white pulse
+  // - pre-game = no ring
   let ringCls = '';
-  if (isWon || (isDone && winning))        ringCls = 'won-r';
-  else if (isLost || (isDone && !winning)) ringCls = 'lost-r';
-  else if (isLive)                         ringCls = 'live-r';
+  if (isWon || (isDone && winning) || (isLive && winning)) ringCls = 'won-r';
+  else if (isLost || (isDone && !winning))                 ringCls = 'lost-r';
+  else if (isLive && !winning)                             ringCls = 'live-r';
 
   const boxCls = isWon || (isDone && winning) ? 'won-box' : isLost || (isDone && !winning) ? 'lost-box' : '';
 
   // Progress bar:
-  // - game over + won = green
-  // - game over + lost = red
-  // - in-game + currently over the line = white (stands out against grey bg)
-  // - in-game + under the line = grey
+  // - won, game over + winning, OR live + winning = green
+  // - lost or game over + losing = red
+  // - live + losing = white
   // - pre-game = grey
   let fillCls = 'c-grey';
-  if (isWon || (isDone && winning))        fillCls = 'c-green';
-  else if (isLost || (isDone && !winning)) fillCls = 'c-red';
-  else if (isLive && winning)              fillCls = 'c-white';
+  if (isWon || (isDone && winning) || (isLive && winning)) fillCls = 'c-green';
+  else if (isLost || (isDone && !winning))                 fillCls = 'c-red';
+  else if (isLive && !winning)                             fillCls = 'c-white';
 
   const pct = Math.min((cur / lin) * 100, 100);
 

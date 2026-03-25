@@ -95,9 +95,9 @@ sed -i '' '/prizepicks/d' ~/.zprofile
 
 | Avatar ring | Progress bar | Meaning |
 |-------------|--------------|---------|
-| White pulse | White        | Game live, currently beating the line |
-| White pulse | Grey         | Game live, currently under the line |
+| Green       | Green        | Game live, currently beating the line |
 | Green       | Green        | Game over — won |
+| White pulse | White        | Game live, currently under the line |
 | Red         | Red          | Game over — lost |
 | None        | Grey         | Game not started yet |
 
