@@ -5,33 +5,29 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   :root {
-    --bg:     #0d0d14;
-    --bg2:    #13131f;
-    --bg3:    #1a1a2a;
-    --border: #ffffff10;
-    --accent: #8b5cf6;
-    --green:  #22c55e;
-    --red:    #ef4444;
-    --gold:   #f59e0b;
-    --text:   #f0eeff;
-    --sub:    #6b6b8a;
+    --bg3:    rgba(255,255,255,0.12);
+    --border: rgba(255,255,255,0.15);
+    --accent: #a78bfa;
+    --green:  #4ade80;
+    --red:    #f87171;
+    --gold:   #fbbf24;
+    --text:   #ffffff;
+    --sub:    rgba(255,255,255,0.65);
   }
 
   html, body {
     background: transparent;
     font-family: -apple-system, 'SF Pro Text', sans-serif;
     user-select: none;
-    height: 100%;
     overflow: hidden;
   }
 
   #wrap {
-    background: rgba(10,10,20,0.96);
+    background: rgba(80,80,85,0.82);
     backdrop-filter: blur(28px) saturate(200%);
     -webkit-backdrop-filter: blur(28px) saturate(200%);
     border: 1px solid var(--border);
     border-radius: 14px;
-    height: 100%;
     display: flex;
     flex-direction: column;
     box-shadow: 0 12px 48px rgba(0,0,0,0.7), 0 0 0 0.5px rgba(255,255,255,0.05);
@@ -97,7 +93,7 @@
 
   /* Body */
   #body {
-    flex: 1; overflow-y: auto; overflow-x: hidden;
+    overflow-y: auto; overflow-x: hidden;
   }
   #body::-webkit-scrollbar { width: 3px; }
   #body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
@@ -146,9 +142,10 @@
 
   .prog-track { height: 3px; background: var(--bg3); border-radius: 2px; margin-bottom: 3px; }
   .prog-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
-  .prog-fill.green  { background: var(--green); }
-  .prog-fill.red    { background: var(--red); }
-  .prog-fill.purple { background: var(--accent); }
+  .prog-fill.c-green { background: var(--green); }
+  .prog-fill.c-red   { background: var(--red); }
+  .prog-fill.c-white { background: rgba(255,255,255,0.85); }
+  .prog-fill.c-grey  { background: rgba(255,255,255,0.25); }
   .prog-labels { display: flex; justify-content: space-between; font-size: 9px; font-weight: 600; }
   .prog-labels .cur { color: var(--text); }
   .prog-labels .lv  { color: var(--sub); }
@@ -189,6 +186,11 @@
     <div id="titlebar-left">
       <button id="close-btn" onclick="closeFloat()"></button>
       <div id="title">PrizePicks</div>
+      <div id="account-switcher" style="display:none;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--sub);margin-left:6px;">
+        <span onclick="prevAccount()" style="cursor:pointer;padding:1px 4px" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--sub)'">‹</span>
+        <span id="account-label"></span>
+        <span onclick="nextAccount()" style="cursor:pointer;padding:1px 4px" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--sub)'">›</span>
+      </div>
     </div>
     <div id="titlebar-right">
       <div id="wl"></div>
@@ -210,7 +212,32 @@ function doRefresh() {
   ipcRenderer.send('refresh');
 }
 
-ipcRenderer.on('picks-data', (_, { entries, error }) => render(entries, error));
+let _accounts = [];
+let _activeAccount = 0;
+
+function prevAccount() {
+  const idx = (_activeAccount - 1 + _accounts.length) % _accounts.length;
+  ipcRenderer.send('switch-account', idx);
+}
+function nextAccount() {
+  const idx = (_activeAccount + 1) % _accounts.length;
+  ipcRenderer.send('switch-account', idx);
+}
+
+ipcRenderer.on('picks-data', (_, { entries, error, accounts, activeAccount }) => {
+  _accounts = accounts || ['Acc 1'];
+  _activeAccount = activeAccount || 0;
+  const sw = document.getElementById('account-switcher');
+  if (sw) { sw.style.display = _accounts.length > 1 ? 'flex' : 'none'; }
+  const lbl = document.getElementById('account-label');
+  if (lbl) lbl.textContent = _accounts[_activeAccount] || '';
+  render(entries, error);
+  // Report height so window auto-sizes
+  requestAnimationFrame(() => {
+    const wrap = document.getElementById('wrap');
+    if (wrap) ipcRenderer.send('float-height', wrap.scrollHeight);
+  });
+});
 
 function render(entries, error) {
   const body = document.getElementById('body');
@@ -238,7 +265,14 @@ function pickHtml(p) {
   const isWon  = ['won','correct','win'].includes(p.result);
   const isLost = ['lost','incorrect','loss'].includes(p.result);
   const isLive = p.inGame && !isWon && !isLost;
-  const ringCls = isWon ? 'won-r' : isLost ? 'lost-r' : isLive ? 'live-r' : '';
+  const cur2 = parseFloat(p.current)||0, lin2 = parseFloat(p.line)||1;
+  const winning2 = p.wagerType === 'over' ? cur2 >= lin2 : cur2 <= lin2;
+  const isDone2 = p.gameFinished;
+  const isLive2 = p.inGame && !isDone2 && !isWon && !isLost;
+  let ringCls = '';
+  if (isWon || (isDone2 && winning2))        ringCls = 'won-r';
+  else if (isLost || (isDone2 && !winning2)) ringCls = 'lost-r';
+  else if (isLive2)                          ringCls = 'live-r';
   const boxCls  = isWon ? 'won-box' : isLost ? 'lost-box' : '';
 
   const avHtml = p.imgUrl
@@ -257,7 +291,13 @@ function pickHtml(p) {
   if (p.current != null && p.line != null) {
     const cur = parseFloat(p.current)||0, lin = parseFloat(p.line)||1;
     const pct = Math.min((cur/lin)*100,100);
-    const fc = isWon?'green':isLost?'red':p.wagerType==='over'?'green':'purple';
+    const cur_f = parseFloat(p.current)||0, lin_f = parseFloat(p.line)||1;
+    const win_f = p.wagerType==='over' ? cur_f>=lin_f : cur_f<=lin_f;
+    const done_f = p.gameFinished, live_f = p.inGame && !done_f;
+    let fc = 'c-grey';
+    if (isWon||(done_f&&win_f))         fc='c-green';
+    else if (isLost||(done_f&&!win_f))  fc='c-red';
+    else if (live_f&&win_f)             fc='c-white';
     progHtml = `<div class="prog-track"><div class="prog-fill ${fc}" style="width:${pct}%"></div></div>
     <div class="prog-labels"><span class="cur">${cur%1===0?cur:cur.toFixed(1)}</span><span class="lv">/ ${lin}</span></div>`;
   }

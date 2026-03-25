@@ -6,16 +6,14 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   :root {
-    --bg:     #0d0d14;
-    --bg2:    #13131f;
-    --bg3:    #1a1a2a;
-    --border: #ffffff10;
-    --accent: #8b5cf6;
-    --green:  #22c55e;
-    --red:    #ef4444;
-    --gold:   #f59e0b;
-    --text:   #f0eeff;
-    --sub:    #6b6b8a;
+    --bg3:    rgba(255,255,255,0.12);
+    --border: rgba(255,255,255,0.15);
+    --accent: #a78bfa;
+    --green:  #4ade80;
+    --red:    #f87171;
+    --gold:   #fbbf24;
+    --text:   #ffffff;
+    --sub:    rgba(255,255,255,0.65);
   }
 
   html, body {
@@ -27,126 +25,91 @@
   }
 
   #wrap {
-    background: rgba(12,12,20,0.97);
-    backdrop-filter: blur(28px) saturate(200%);
-    -webkit-backdrop-filter: blur(28px) saturate(200%);
-    border: 1px solid var(--border);
+    background: rgba(80,80,85,0.82);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.18);
     border-radius: 14px;
     overflow: hidden;
-    height: 100%;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(255,255,255,0.06);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
   }
 
-  /* ── Header ── */
   #header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: flex; align-items: center; justify-content: space-between;
     padding: 10px 14px;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
   }
-
-  #header-left {
-    display: flex; align-items: center; gap: 8px;
-  }
-
-  #header-title {
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--sub);
-  }
-
-  #header-dots {
-    display: flex; gap: 4px; align-items: center;
-  }
-
-  .hdot {
-    width: 4px; height: 4px; border-radius: 50%;
-  }
+  #header-left { display: flex; align-items: center; gap: 8px; }
+  #header-title { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sub); }
+  #header-dots { display: flex; gap: 4px; align-items: center; }
+  .hdot { width: 4px; height: 4px; border-radius: 50%; }
   .hdot.won  { background: var(--green); box-shadow: 0 0 6px 2px var(--green); }
   .hdot.lost { background: var(--red);   box-shadow: 0 0 6px 2px var(--red); }
   .hdot.live { background: var(--gold);  box-shadow: 0 0 6px 2px var(--gold); animation: pulse 1.4s infinite; }
   .hdot.pre  { background: var(--sub);   box-shadow: 0 0 4px 1px var(--sub); }
-
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
 
-  #header-right {
-    display: flex; align-items: center; gap: 10px;
-  }
-
-  #wl {
-    font-size: 12px; font-weight: 700;
-    display: flex; gap: 6px;
-  }
+  #header-right { display: flex; align-items: center; gap: 10px; }
+  #wl { font-size: 12px; font-weight: 700; display: flex; gap: 6px; }
   .wl-w { color: var(--green); }
   .wl-l { color: var(--red); }
 
+  #account-switcher { display: none; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; color: var(--sub); }
+  #account-label { min-width: 36px; text-align: center; }
+
   #refresh-btn {
-    font-size: 13px; color: var(--sub);
-    cursor: pointer; padding: 2px 4px;
-    transition: color 0.2s, transform 0.3s;
-    border-radius: 4px;
+    font-size: 13px; color: var(--sub); cursor: pointer;
+    padding: 2px 4px; border-radius: 4px; transition: color 0.2s;
   }
-  #refresh-btn:hover { color: var(--text); background: var(--bg3); }
+  #refresh-btn:hover { color: var(--text); }
   #refresh-btn.spin { animation: spin 0.5s linear; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ── Scroll body ── */
-  #body {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
+  #float-btn { font-size: 12px; color: var(--sub); cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+  #float-btn:hover { color: var(--text); }
+
+  #body { overflow-y: auto; overflow-x: hidden; }
   #body::-webkit-scrollbar { width: 3px; }
   #body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-  /* ── Entry header ── */
   .entry-hdr {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 14px 6px;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 14px 6px;
     border-bottom: 1px solid var(--border);
   }
-  .entry-amt {
-    font-size: 11px; font-weight: 700; color: var(--sub);
-  }
+  .entry-amt { font-size: 11px; font-weight: 700; color: var(--sub); }
   .entry-amt span { color: var(--gold); }
-  .entry-rec {
-    font-size: 11px; display: flex; gap: 6px;
-  }
+  .entry-rec { font-size: 11px; display: flex; gap: 6px; }
   .entry-rec .w { color: var(--green); font-weight: 700; }
-  .entry-rec .l { color: var(--red);   font-weight: 700; }
+  .entry-rec .l { color: var(--red); font-weight: 700; }
 
-  /* ── Pick row ── */
   .pick {
-    display: grid;
-    grid-template-columns: 48px 1fr 68px;
-    gap: 10px;
-    padding: 10px 14px;
+    display: grid; grid-template-columns: 48px 1fr 68px;
+    gap: 10px; padding: 10px 14px;
     border-bottom: 1px solid var(--border);
     align-items: center;
   }
   .pick:last-child { border-bottom: none; }
   .pick:hover { background: rgba(255,255,255,0.025); }
 
-  /* Avatar */
   .av {
-    width: 44px; height: 44px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid var(--border);
-    background: var(--bg3);
-    flex-shrink: 0;
+    width: 44px; height: 44px; border-radius: 50%;
+    object-fit: cover; border: 2px solid var(--border);
+    background: var(--bg3); flex-shrink: 0;
   }
-  .av.won-r  { border-color: var(--green); box-shadow: 0 0 8px var(--green)55; }
-  .av.lost-r { border-color: var(--red);   box-shadow: 0 0 8px var(--red)55; }
-  .av.live-r { border-color: rgba(255,255,255,0.45); }
+  .av.won-r  { border-color: var(--green); box-shadow: 0 0 8px #4ade8066; }
+  .av.lost-r { border-color: var(--red);   box-shadow: 0 0 8px #f8717166; }
+  .av.live-r {
+    border-color: #fff;
+    animation: live-pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes live-pulse {
+    0%,100% { box-shadow: 0 0 0 0px rgba(255,255,255,0.5); border-color: rgba(255,255,255,1); }
+    50%      { box-shadow: 0 0 0 4px rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.5); }
+  }
   .av-ph {
     width: 44px; height: 44px; border-radius: 50%;
     background: var(--bg3); border: 2px solid var(--border);
@@ -154,82 +117,43 @@
     font-size: 18px; flex-shrink: 0;
   }
 
-  /* Mid */
   .mid { min-width: 0; }
-  .name-row {
-    display: flex; align-items: center; gap: 5px; margin-bottom: 2px;
-  }
-  .pname {
-    font-size: 13px; font-weight: 700; color: var(--text);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .pbadge {
-    font-size: 9px; font-weight: 600; color: var(--sub);
-    background: var(--bg3); padding: 1px 4px; border-radius: 3px;
-    flex-shrink: 0;
-  }
-  .game-row {
-    font-size: 10px; color: var(--sub);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    margin-bottom: 5px;
-  }
-  .league-tag {
-    background: var(--bg3); padding: 1px 4px;
-    border-radius: 3px; font-weight: 600; margin-right: 3px;
-  }
+  .name-row { display: flex; align-items: center; gap: 5px; margin-bottom: 2px; }
+  .pname { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pbadge { font-size: 9px; font-weight: 600; color: var(--sub); background: var(--bg3); padding: 1px 4px; border-radius: 3px; flex-shrink: 0; }
+  .game-row { font-size: 10px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 5px; }
+  .league-tag { background: var(--bg3); padding: 1px 4px; border-radius: 3px; font-weight: 600; margin-right: 3px; }
   .live-tag { color: var(--gold); font-weight: 600; }
 
-  /* Progress */
-  .prog-track {
-    height: 3px; background: var(--bg3);
-    border-radius: 2px; position: relative; margin-bottom: 3px;
-  }
-  .prog-fill {
-    height: 100%; border-radius: 2px;
-    transition: width 0.5s ease;
-  }
-  .prog-fill.green { background: var(--green); }
-  .prog-fill.red   { background: var(--red); }
-  .prog-fill.purple{ background: var(--accent); }
-  .prog-labels {
-    display: flex; justify-content: space-between;
-    font-size: 9px; font-weight: 600;
-  }
+  .prog-track { height: 3px; background: rgba(255,255,255,0.12); border-radius: 2px; margin-bottom: 3px; }
+  .prog-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+  .prog-fill.c-green  { background: var(--green); }
+  .prog-fill.c-red    { background: var(--red); }
+  .prog-fill.c-white  { background: rgba(255,255,255,0.85); }
+  .prog-fill.c-grey   { background: rgba(255,255,255,0.25); }
+  .prog-labels { display: flex; justify-content: space-between; font-size: 9px; font-weight: 600; }
   .prog-labels .cur { color: var(--text); }
   .prog-labels .lv  { color: var(--sub); }
 
-  /* Line box */
   .linebox {
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
     background: var(--bg3); border: 1px solid var(--border);
-    border-radius: 10px; padding: 6px 8px;
-    text-align: center; flex-shrink: 0;
+    border-radius: 10px; padding: 6px 8px; text-align: center; flex-shrink: 0;
   }
-  .linebox.won-box  { border-color: var(--green)44; background: #22c55e0d; }
-  .linebox.lost-box { border-color: var(--red)44;   background: #ef44440d; }
+  .linebox.won-box  { border-color: #4ade8044; background: #4ade800d; }
+  .linebox.lost-box { border-color: #f8717144; background: #f871710d; }
   .dir { font-size: 14px; line-height: 1; margin-bottom: 1px; }
   .dir.up   { color: var(--green); }
   .dir.down { color: var(--red); }
-  .linenum {
-    font-size: 14px; font-weight: 800; color: var(--text); line-height: 1;
-  }
-  .statlbl {
-    font-size: 8px; font-weight: 600; color: var(--sub);
-    text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px;
-  }
-  .res-lbl {
-    font-size: 9px; font-weight: 800; margin-top: 2px;
-  }
+  .linenum { font-size: 14px; font-weight: 800; color: var(--text); line-height: 1; }
+  .statlbl { font-size: 8px; font-weight: 600; color: var(--sub); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px; }
+  .res-lbl { font-size: 9px; font-weight: 800; margin-top: 2px; }
   .res-lbl.w { color: var(--green); }
   .res-lbl.l { color: var(--red); }
 
-  /* Status messages */
-  .msg { padding: 24px 16px; text-align: center; color: var(--sub); font-size: 13px; }
+  .msg { padding: 20px 16px; text-align: center; color: var(--sub); font-size: 13px; }
   .msg.err { color: var(--red); }
-
-  /* Entry divider */
-  .ediv { height: 1px; background: var(--accent)22; margin: 2px 14px; }
+  .ediv { height: 1px; background: rgba(255,255,255,0.08); margin: 0 14px; }
 </style>
 </head>
 <body>
@@ -240,26 +164,41 @@
       <div id="header-dots"></div>
     </div>
     <div id="header-right">
+      <div id="account-switcher">
+        <span onclick="prevAccount()" style="cursor:pointer;padding:1px 5px" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--sub)'">‹</span>
+        <span id="account-label"></span>
+        <span onclick="nextAccount()" style="cursor:pointer;padding:1px 5px" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--sub)'">›</span>
+      </div>
       <div id="wl"></div>
-      <div id="float-btn" title="Toggle floating window" onclick="toggleFloat()" style="font-size:12px;color:var(--sub);cursor:pointer;padding:2px 4px;border-radius:4px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--sub)'">⧉</div>
-      <div id="refresh-btn" title="Refresh" onclick="doRefresh()">↻</div>
+      <div id="float-btn" title="Floating window" onclick="toggleFloat()">⧉</div>
+      <div id="refresh-btn" onclick="doRefresh()">↻</div>
     </div>
   </div>
-  <div id="body"><div class="msg">Loading…</div></div>
+  <div id="body"></div>
 </div>
 
 <script>
 const { ipcRenderer } = require('electron');
+let _accounts = [], _activeAccount = 0;
 
-ipcRenderer.on('picks-data', (_, { entries, error }) => {
+ipcRenderer.on('picks-data', (_, { entries, error, accounts, activeAccount }) => {
+  _accounts = accounts || ['Acc 1'];
+  _activeAccount = activeAccount || 0;
+  const sw = document.getElementById('account-switcher');
+  if (sw) sw.style.display = _accounts.length > 1 ? 'flex' : 'none';
+  const lbl = document.getElementById('account-label');
+  if (lbl) lbl.textContent = _accounts[_activeAccount] || '';
   render(entries, error);
+  // After render, report actual height so window fits exactly
+  requestAnimationFrame(() => {
+    const wrap = document.getElementById('wrap');
+    if (wrap) ipcRenderer.send('popup-height', wrap.scrollHeight);
+  });
 });
 
-function toggleFloat() {
-  ipcRenderer.send('toggle-float');
-  ipcRenderer.send('hide');
-}
-
+function toggleFloat() { ipcRenderer.send('toggle-float'); ipcRenderer.send('hide'); }
+function prevAccount() { ipcRenderer.send('switch-account', (_activeAccount - 1 + _accounts.length) % _accounts.length); }
+function nextAccount() { ipcRenderer.send('switch-account', (_activeAccount + 1) % _accounts.length); }
 function doRefresh() {
   const btn = document.getElementById('refresh-btn');
   btn.classList.add('spin');
@@ -268,45 +207,33 @@ function doRefresh() {
 }
 
 function render(entries, error) {
-  const body  = document.getElementById('body');
-  const dots  = document.getElementById('header-dots');
-  const wlEl  = document.getElementById('wl');
+  const body = document.getElementById('body');
+  const dots = document.getElementById('header-dots');
+  const wlEl = document.getElementById('wl');
 
-  // Dots
   dots.innerHTML = '';
   const allPicks = (entries || []).flatMap(e => e.picks);
   allPicks.slice(0,10).forEach(p => {
     const d = document.createElement('div');
     d.className = 'hdot';
-    if (['won','correct','win','winning'].includes(p.result)) d.classList.add('won');
+    if (['won','correct','win'].includes(p.result)) d.classList.add('won');
     else if (['lost','incorrect','loss'].includes(p.result)) d.classList.add('lost');
     else if (p.inGame) d.classList.add('live');
     else d.classList.add('pre');
     dots.appendChild(d);
   });
 
-  // W/L
-  const tw = (entries||[]).reduce((s,e)=>s+e.won, 0);
+  const tw = (entries||[]).reduce((s,e)=>s+e.won,0);
   const tl = (entries||[]).reduce((s,e)=>s+e.lost,0);
   wlEl.innerHTML = `<span class="wl-w">${tw}W</span><span class="wl-l">${tl}L</span>`;
 
-  if (error) {
-    body.innerHTML = `<div class="msg err">⚠️ ${error}</div>`;
-    return;
-  }
-  if (!entries || !entries.length) {
-    body.innerHTML = `<div class="msg">No pending picks</div>`;
-    return;
-  }
+  if (error) { body.innerHTML = `<div class="msg err">⚠ ${error}</div>`; return; }
+  if (!entries || !entries.length) { body.innerHTML = `<div class="msg">No active picks</div>`; return; }
 
   body.innerHTML = entries.map((entry, ei) => `
     <div class="entry-hdr">
       <div class="entry-amt">${entry.amount} <span>→ ${entry.payout}</span></div>
-      <div class="entry-rec">
-        <span class="w">${entry.won}W</span>
-        <span class="l">${entry.lost}L</span>
-        <span>${entry.open} live</span>
-      </div>
+      <div class="entry-rec"><span class="w">${entry.won}W</span><span class="l">${entry.lost}L</span><span style="color:var(--sub)">${entry.open} live</span></div>
     </div>
     ${entry.picks.map(p => pickHtml(p)).join('')}
     ${ei < entries.length-1 ? '<div class="ediv"></div>' : ''}
@@ -314,12 +241,41 @@ function render(entries, error) {
 }
 
 function pickHtml(p) {
-  const isWon  = ['won','correct','win'].includes(p.result);
-  const isLost = ['lost','incorrect','loss'].includes(p.result);
-  const isLive = p.inGame && !isWon && !isLost;
+  const isWon   = ['won','correct','win'].includes(p.result);
+  const isLost  = ['lost','incorrect','loss'].includes(p.result);
+  const isDone  = p.gameFinished;
+  const isLive  = p.inGame && !isDone && !isWon && !isLost;
+  const isPre   = !p.inGame && !isDone && !isWon && !isLost;
 
-  const ringCls = isWon ? 'won-r' : isLost ? 'lost-r' : isLive ? 'live-r' : '';
-  const boxCls  = isWon ? 'won-box' : isLost ? 'lost-box' : '';
+  const cur = parseFloat(p.current) || 0;
+  const lin = parseFloat(p.line) || 1;
+  // "winning" = currently beating the line (over is above, under is below)
+  const winning = p.wagerType === 'over' ? cur >= lin : cur <= lin;
+
+  // Ring logic:
+  // - game over + winning = green (no pulse)
+  // - game over + losing  = red (no pulse)
+  // - in-game             = white pulse (regardless of crossing — it just shows it's live)
+  // - pre-game / not started = no ring
+  let ringCls = '';
+  if (isWon || (isDone && winning))        ringCls = 'won-r';
+  else if (isLost || (isDone && !winning)) ringCls = 'lost-r';
+  else if (isLive)                         ringCls = 'live-r';
+
+  const boxCls = isWon || (isDone && winning) ? 'won-box' : isLost || (isDone && !winning) ? 'lost-box' : '';
+
+  // Progress bar:
+  // - game over + won = green
+  // - game over + lost = red
+  // - in-game + currently over the line = white (stands out against grey bg)
+  // - in-game + under the line = grey
+  // - pre-game = grey
+  let fillCls = 'c-grey';
+  if (isWon || (isDone && winning))        fillCls = 'c-green';
+  else if (isLost || (isDone && !winning)) fillCls = 'c-red';
+  else if (isLive && winning)              fillCls = 'c-white';
+
+  const pct = Math.min((cur / lin) * 100, 100);
 
   const avHtml = p.imgUrl
     ? `<img class="av ${ringCls}" src="${p.imgUrl}" onerror="this.outerHTML='<div class=\\'av-ph\\'>👤</div>'">`
@@ -327,52 +283,35 @@ function pickHtml(p) {
 
   let gameStr = '';
   if (p.awayAbb && p.homeAbb) {
-    const pl = p.punit==='quarter' ? `Q${p.period}` : p.punit==='half' ? `H${p.period}` : `P${p.period}`;
-    const cl = p.clock ? ` · ${p.clock}` : '';
-    gameStr = `<span class="league-tag">${p.league}</span>${p.awayAbb} ${p.awaySc} @ ${p.homeAbb} ${p.homeSc} <span class="live-tag">${pl}${cl}</span>`;
+    const pl = p.punit==='quarter'?`Q${p.period}`:p.punit==='half'?`H${p.period}`:`P${p.period}`;
+    gameStr = `<span class="league-tag">${p.league}</span>${p.awayAbb} ${p.awaySc} @ ${p.homeAbb} ${p.homeSc} <span class="live-tag">${pl}${p.clock?' · '+p.clock:''}</span>`;
   } else if (p.league) {
-    gameStr = `<span class="league-tag">${p.league}</span>${isLive ? '<span class="live-tag">LIVE</span>' : ''}`;
+    gameStr = `<span class="league-tag">${p.league}</span>${isLive?'<span class="live-tag">LIVE</span>':''}`;
   }
 
-  let progHtml = '';
-  if (p.current != null && p.line != null) {
-    const cur = parseFloat(p.current)||0, lin = parseFloat(p.line)||1;
-    const pct = Math.min((cur/lin)*100, 100);
-    const fc = isWon ? 'green' : isLost ? 'red' : p.wagerType==='over' ? 'green' : 'purple';
-    progHtml = `
-      <div class="prog-track">
-        <div class="prog-fill ${fc}" style="width:${pct}%"></div>
-      </div>
-      <div class="prog-labels">
-        <span class="cur">${cur%1===0?cur:cur.toFixed(1)}</span>
-        <span class="lv">/ ${lin}</span>
-      </div>`;
-  }
+  const progHtml = p.current != null && p.line != null ? `
+    <div class="prog-track"><div class="prog-fill ${fillCls}" style="width:${pct}%"></div></div>
+    <div class="prog-labels"><span class="cur">${cur%1===0?cur:cur.toFixed(1)}</span><span class="lv">/ ${lin}</span></div>` : '';
 
-  const dir = p.wagerType==='over' ? '↑' : '↓';
-  const dirCls = p.wagerType==='over' ? 'up' : 'down';
+  const dir = p.wagerType==='over'?'↑':'↓';
+  const dirCls = p.wagerType==='over'?'up':'down';
   const odds = p.oddsType==='demon'?'👹 ':p.oddsType==='goblin'?'👺 ':'';
-  const resHtml = isWon ? '<div class="res-lbl w">✓ WON</div>'
-                : isLost ? '<div class="res-lbl l">✗ LOST</div>' : '';
+  const resHtml = isWon?'<div class="res-lbl w">✓ WON</div>':isLost?'<div class="res-lbl l">✗ LOST</div>':'';
 
-  return `
-    <div class="pick">
-      ${avHtml}
-      <div class="mid">
-        <div class="name-row">
-          <div class="pname">${p.name}</div>
-          ${p.pos ? `<div class="pbadge">${p.pos}</div>` : ''}
-        </div>
-        ${gameStr ? `<div class="game-row">${gameStr}</div>` : ''}
-        ${progHtml}
-      </div>
-      <div class="linebox ${boxCls}">
-        <div class="dir ${dirCls}">${dir}</div>
-        <div class="linenum">${p.line}</div>
-        <div class="statlbl">${odds}${p.statName}</div>
-        ${resHtml}
-      </div>
-    </div>`;
+  return `<div class="pick">
+    ${avHtml}
+    <div class="mid">
+      <div class="name-row"><div class="pname">${p.name}</div>${p.pos?`<div class="pbadge">${p.pos}</div>`:''}</div>
+      ${gameStr?`<div class="game-row">${gameStr}</div>`:''}
+      ${progHtml}
+    </div>
+    <div class="linebox ${boxCls}">
+      <div class="dir ${dirCls}">${dir}</div>
+      <div class="linenum">${p.line}</div>
+      <div class="statlbl">${odds}${p.statName}</div>
+      ${resHtml}
+    </div>
+  </div>`;
 }
 </script>
 </body>
