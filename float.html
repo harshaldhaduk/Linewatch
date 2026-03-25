@@ -16,6 +16,7 @@
   }
 
   html, body {
+    height: 100%;
     background: transparent;
     font-family: -apple-system, 'SF Pro Text', sans-serif;
     user-select: none;
@@ -23,6 +24,7 @@
   }
 
   #wrap {
+    height: 100%;
     background: rgba(80,80,85,0.82);
     backdrop-filter: blur(28px) saturate(200%);
     -webkit-backdrop-filter: blur(28px) saturate(200%);
@@ -93,7 +95,11 @@
 
   /* Body */
   #body {
-    overflow-y: auto; overflow-x: hidden;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    max-height: calc(100vh - 44px);
+    flex: 1;
   }
   #body::-webkit-scrollbar { width: 3px; }
   #body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
@@ -115,7 +121,8 @@
     border-bottom: 1px solid var(--border);
     align-items: center;
   }
-  .pick:hover { background: rgba(255,255,255,0.02); }
+  .pick:hover { background: rgba(255,255,255,0.04); }
+  .pick { cursor: pointer; }
 
   .av {
     width: 40px; height: 40px; border-radius: 50%;
@@ -205,6 +212,31 @@
 const { ipcRenderer } = require('electron');
 
 function closeFloat() { ipcRenderer.send('toggle-float'); }
+
+function openPick(encoded) {
+  const p = JSON.parse(decodeURIComponent(encoded));
+  const { shell } = require('electron');
+  const league = (p.league || '').toUpperCase();
+  const esports = ['CS2','CS:GO','LOL','DOTA2','DOTA','VALORANT','OVERWATCH','APEX','FORTNITE','ROCKET LEAGUE','COD','PUBG','R6','HALO'];
+  const isEsport = esports.some(e => league.includes(e));
+  const today = new Date();
+  const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  const mon = months[today.getMonth()];
+  const dd = today.getDate();
+  const yyyy = today.getFullYear();
+
+  if (league === 'NBA') {
+    const query = encodeURIComponent(`${p.awayAbb} ${p.homeAbb} ${mon} ${dd} espn gamecast`);
+    shell.openExternal(`https://www.google.com/search?q=${query}&btnI=1`);
+  } else if (isEsport) {
+    const teams = p.awayAbb && p.homeAbb ? `${p.awayAbb} vs ${p.homeAbb}` : p.name;
+    const query = encodeURIComponent(`${teams} ${mon} ${dd} ${yyyy} gosugamers`);
+    shell.openExternal(`https://www.google.com/search?q=${query}&btnI=1`);
+  } else {
+    const query = encodeURIComponent(`${p.awayAbb || ''} vs ${p.homeAbb || ''} ${p.league || ''} ${mon} ${dd} live score`);
+    shell.openExternal(`https://www.google.com/search?q=${query}`);
+  }
+}
 function doRefresh() {
   const btn = document.getElementById('refresh-btn');
   btn.classList.add('spin');
@@ -307,7 +339,8 @@ function pickHtml(p) {
   const odds = p.oddsType==='demon'?'👹 ':p.oddsType==='goblin'?'👺 ':'';
   const resHtml = isWon?'<div class="res-lbl w">✓ WON</div>':isLost?'<div class="res-lbl l">✗ LOST</div>':'';
 
-  return `<div class="pick">
+  const pickData = encodeURIComponent(JSON.stringify({league:p.league,awayAbb:p.awayAbb,homeAbb:p.homeAbb,name:p.name}));
+  return `<div class="pick" onclick="openPick('${pickData}')">
     ${avHtml}
     <div class="mid">
       <div class="name-row"><div class="pname">${p.name}</div>${p.pos?`<div class="pbadge">${p.pos}</div>`:''}</div>
