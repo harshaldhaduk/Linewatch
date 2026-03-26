@@ -37,9 +37,8 @@ After this, the app starts automatically every time you open Terminal.
 
 ## Common Commands
 
-### Restart the app + refresh cookies
+### Restart the app
 ```
-python3 ~/Projects/prizepicks-overlay/auto-cookie.py
 pkill -f "electron.*prizepicks" 2>/dev/null
 ~/Projects/prizepicks-overlay/node_modules/.bin/electron ~/Projects/prizepicks-overlay & disown
 ```

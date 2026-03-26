@@ -162,6 +162,18 @@ function parsePicks(data) {
       const homeSc    = gscore.home ?? '';
       const gameStatus    = meta.status || '';
       const gameFinished  = ['complete','closed','final','finished','ended'].includes(gameStatus);
+      // Detect if actually live: in_game flag OR period exists OR scores are non-zero
+      const hasScores     = (gscore.away != null && gscore.home != null && (gscore.away > 0 || gscore.home > 0));
+      const isActuallyLive = proja.in_game || (period && period > 0) || hasScores;
+      // Start time for pre-game display
+      const startTimeRaw = (game.attributes || {}).start_time || meta.start_time || '';
+      let startTimeStr = '';
+      if (startTimeRaw) {
+        try {
+          const d = new Date(startTimeRaw);
+          startTimeStr = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+        } catch(e) {}
+      }
       const scoreRef   = (pr.score || {}).data || {};
       const scoreObj   = get('score', scoreRef.id);
       const scoreAttrs = scoreObj.attributes || {};
@@ -172,6 +184,7 @@ function parsePicks(data) {
       if (cur == null && scoreAttrs.score != null) cur = scoreAttrs.score;
       if (cur == null) cur = pa.initial_score;
       const gameFinishedFinal = gameFinished || isFinal;
+      const inGameFinal = isActuallyLive && !gameFinishedFinal;
       let result = (pa.result || 'pending').toLowerCase();
       if ((result === 'pending' || !result) && cur != null && line != null) {
         const c = parseFloat(cur), l = parseFloat(line);
@@ -181,7 +194,7 @@ function parsePicks(data) {
           result = wagerType === 'over' ? (c >= l ? 'winning' : 'pending') : (c <= l ? 'winning' : 'pending');
         }
       }
-      return { name, pos, league, imgUrl, statName, line, wagerType, oddsType, current: cur, inGame, gameFinished: gameFinishedFinal, result, clock, period, punit, awayAbb, homeAbb, awaySc, homeSc };
+      return { name, pos, league, imgUrl, statName, line, wagerType, oddsType, current: cur, inGame: inGameFinal, gameFinished: gameFinishedFinal, result, clock, period, punit, awayAbb, homeAbb, awaySc, homeSc, startTime: startTimeStr };
     });
 
     const won  = picks.filter(p => ['won','correct','win'].includes(p.result)).length;

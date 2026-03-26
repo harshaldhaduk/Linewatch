@@ -24,7 +24,6 @@
   }
 
   #wrap {
-    height: 100%;
     background: rgba(80,80,85,0.82);
     backdrop-filter: blur(28px) saturate(200%);
     -webkit-backdrop-filter: blur(28px) saturate(200%);
@@ -71,6 +70,13 @@
     letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--sub);
   }
+  #header-dots { display: flex; gap: 4px; align-items: center; }
+  .hdot { width: 4px; height: 4px; border-radius: 50%; }
+  .hdot.won  { background: var(--green); box-shadow: 0 0 6px 2px var(--green); }
+  .hdot.lost { background: var(--red);   box-shadow: 0 0 6px 2px var(--red); }
+  .hdot.live { background: var(--gold);  box-shadow: 0 0 6px 2px var(--gold); animation: pulse 1.4s infinite; }
+  .hdot.pre  { background: var(--sub);   box-shadow: 0 0 4px 1px var(--sub); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
 
   #titlebar-right {
     display: flex; align-items: center; gap: 8px;
@@ -95,7 +101,7 @@
 
   /* Body */
   #body {
-    overflow-y: scroll;
+    overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     max-height: calc(100vh - 44px);
@@ -131,7 +137,14 @@
   }
   .av.won-r  { border-color: var(--green); box-shadow: 0 0 7px #22c55e55; }
   .av.lost-r { border-color: var(--red);   box-shadow: 0 0 7px #ef444455; }
-  .av.live-r { border-color: rgba(255,255,255,0.4); }
+  .av.live-r {
+    border-color: #fff;
+    animation: live-pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes live-pulse {
+    0%,100% { box-shadow: 0 0 0 1px rgba(255,255,255,0.9), 0 0 5px rgba(255,255,255,0.3); border-color: #fff; }
+    50%      { box-shadow: 0 0 0 2px rgba(255,255,255,0.15), 0 0 8px rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.4); }
+  }
   .av-ph {
     width: 40px; height: 40px; border-radius: 50%;
     background: var(--bg3); border: 2px solid var(--border);
@@ -151,7 +164,7 @@
   .prog-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
   .prog-fill.c-green { background: var(--green); }
   .prog-fill.c-red   { background: var(--red); }
-  .prog-fill.c-white { background: rgba(255,255,255,0.85); }
+  .prog-fill.c-white { background: #ffffff; }
   .prog-fill.c-grey  { background: rgba(255,255,255,0.25); }
   .prog-labels { display: flex; justify-content: space-between; font-size: 9px; font-weight: 600; }
   .prog-labels .cur { color: var(--text); }
@@ -193,13 +206,14 @@
     <div id="titlebar-left">
       <button id="close-btn" onclick="closeFloat()"></button>
       <div id="title">Linewatch</div>
-      <div id="account-switcher" style="display:none;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--sub);margin-left:6px;">
+      <div id="header-dots"></div>
+    </div>
+    <div id="titlebar-right">
+      <div id="account-switcher" style="display:none;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--sub);">
         <span onclick="prevAccount()" style="cursor:pointer;padding:1px 4px" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--sub)'">‹</span>
         <span id="account-label"></span>
         <span onclick="nextAccount()" style="cursor:pointer;padding:1px 4px" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--sub)'">›</span>
       </div>
-    </div>
-    <div id="titlebar-right">
       <div id="wl"></div>
       <div id="refresh-btn" onclick="doRefresh()">↻</div>
     </div>
@@ -224,17 +238,14 @@ function openPick(encoded) {
   const mon = months[today.getMonth()];
   const dd = today.getDate();
   const yyyy = today.getFullYear();
+  const teams = p.awayAbb && p.homeAbb ? `${p.awayAbb} vs ${p.homeAbb}` : p.name;
 
-  if (league === 'NBA') {
-    const query = encodeURIComponent(`${p.awayAbb} ${p.homeAbb} ${mon} ${dd} espn gamecast`);
-    shell.openExternal(`https://www.google.com/search?q=${query}&btnI=1`);
-  } else if (isEsport) {
-    const teams = p.awayAbb && p.homeAbb ? `${p.awayAbb} vs ${p.homeAbb}` : p.name;
+  if (isEsport) {
     const query = encodeURIComponent(`${teams} ${mon} ${dd} ${yyyy} gosugamers`);
     shell.openExternal(`https://www.google.com/search?q=${query}&btnI=1`);
   } else {
-    const query = encodeURIComponent(`${p.awayAbb || ''} vs ${p.homeAbb || ''} ${p.league || ''} ${mon} ${dd} live score`);
-    shell.openExternal(`https://www.google.com/search?q=${query}`);
+    const query = encodeURIComponent(`${teams} ${p.league} ${mon} ${dd} espn`);
+    shell.openExternal(`https://www.google.com/search?q=${query}&btnI=1`);
   }
 }
 function doRefresh() {
@@ -267,18 +278,39 @@ ipcRenderer.on('picks-data', (_, { entries, error, accounts, activeAccount }) =>
   // Report height so window auto-sizes
   requestAnimationFrame(() => {
     const wrap = document.getElementById('wrap');
-    if (wrap) ipcRenderer.send('float-height', wrap.scrollHeight);
+    const titlebar = document.getElementById('titlebar');
+    const body = document.getElementById('body');
+    if (titlebar && body) {
+      const h = titlebar.offsetHeight + body.scrollHeight + 2;
+      ipcRenderer.send('float-height', h);
+    }
   });
 });
 
 function render(entries, error) {
   const body = document.getElementById('body');
   const wlEl = document.getElementById('wl');
+  const dotsEl = document.getElementById('header-dots');
 
   const tw = (entries||[]).reduce((s,e)=>s+e.won, 0);
   const tl = (entries||[]).reduce((s,e)=>s+e.lost,0);
   const to = (entries||[]).reduce((s,e)=>s+e.open,0);
-  wlEl.innerHTML = `<span class="wl-w">${tw}W</span><span class="wl-l">${tl}L</span><span class="wl-o">${to}O</span>`;
+  wlEl.innerHTML = `<span class="wl-w">${tw}W</span><span class="wl-l">${tl}L</span>`;
+
+  // Render dots
+  if (dotsEl) {
+    dotsEl.innerHTML = '';
+    const allPicks = (entries||[]).flatMap(e=>e.picks);
+    allPicks.slice(0,10).forEach(p => {
+      const d = document.createElement('div');
+      d.className = 'hdot';
+      if (['won','correct','win'].includes(p.result)) d.classList.add('won');
+      else if (['lost','incorrect','loss'].includes(p.result)) d.classList.add('lost');
+      else if (p.inGame) d.classList.add('live');
+      else d.classList.add('pre');
+      dotsEl.appendChild(d);
+    });
+  }
 
   if (error) { body.innerHTML = `<div class="msg err">⚠️ ${error}</div>`; return; }
   if (!entries || !entries.length) { body.innerHTML = `<div class="msg">No pending picks</div>`; return; }
@@ -286,7 +318,7 @@ function render(entries, error) {
   body.innerHTML = entries.map((entry, ei) => `
     <div class="entry-hdr">
       <div class="entry-amt">${entry.amount} <span>→ ${entry.payout}</span></div>
-      <div class="entry-rec"><span class="w">${entry.won}W</span><span class="l">${entry.lost}L</span><span>${entry.open}O</span></div>
+      <div class="entry-rec"><span class="w">${entry.won}W</span><span class="l">${entry.lost}L</span><span style="color:var(--sub)">${entry.open} live</span></div>
     </div>
     ${entry.picks.map(p => pickHtml(p)).join('')}
     ${ei < entries.length-1 ? '<div style="height:1px;background:#8b5cf622;margin:2px 12px"></div>' : ''}
@@ -296,16 +328,16 @@ function render(entries, error) {
 function pickHtml(p) {
   const isWon  = ['won','correct','win'].includes(p.result);
   const isLost = ['lost','incorrect','loss'].includes(p.result);
-  const isLive = p.inGame && !isWon && !isLost;
+  const isDone = p.gameFinished;
+  const isLive = p.inGame && !isDone && !isWon && !isLost;
+  const isPre  = !p.inGame && !isDone && !isWon && !isLost;
   const cur2 = parseFloat(p.current)||0, lin2 = parseFloat(p.line)||1;
   const winning2 = p.wagerType === 'over' ? cur2 >= lin2 : cur2 <= lin2;
-  const isDone2 = p.gameFinished;
-  const isLive2 = p.inGame && !isDone2 && !isWon && !isLost;
   let ringCls = '';
-  if (isWon || (isDone2 && winning2) || (isLive2 && winning2)) ringCls = 'won-r';
-  else if (isLost || (isDone2 && !winning2))                   ringCls = 'lost-r';
-  else if (isLive2 && !winning2)                               ringCls = 'live-r';
-  const boxCls  = isWon ? 'won-box' : isLost ? 'lost-box' : '';
+  if (isWon || (isDone && winning2) || (isLive && winning2)) ringCls = 'won-r';
+  else if (isLost || (isDone && !winning2))                  ringCls = 'lost-r';
+  else if (isLive && !winning2)                              ringCls = 'live-r';
+  const boxCls = isWon || (isDone && winning2) ? 'won-box' : isLost || (isDone && !winning2) ? 'lost-box' : '';
 
   const avHtml = p.imgUrl
     ? `<img class="av ${ringCls}" src="${p.imgUrl}" onerror="this.outerHTML='<div class=\\'av-ph\\'>👤</div>'">`
@@ -313,30 +345,44 @@ function pickHtml(p) {
 
   let gameStr = '';
   if (p.awayAbb && p.homeAbb) {
-    const pl = p.punit==='quarter'?`Q${p.period}`:p.punit==='half'?`H${p.period}`:`P${p.period}`;
-    gameStr = `<span class="league-tag">${p.league}</span>${p.awayAbb} ${p.awaySc} @ ${p.homeAbb} ${p.homeSc} <span class="live-tag">${pl}${p.clock?' · '+p.clock:''}</span>`;
+    if (isLive) {
+      // Live: show scores and quarter/clock in gold
+      const isHalftime = p.clock === '00:00' && (p.period === 2 || p.period === '2') && p.punit === 'quarter';
+      const isHalfOrEnd = p.clock === '00:00';
+      let pl;
+      if (isHalftime) pl = 'Halftime';
+      else pl = p.punit==='quarter'?`Q${p.period}`:p.punit==='half'?`H${p.period}`:`P${p.period}`;
+      const clockStr = (isHalftime || isHalfOrEnd) ? '' : p.clock ? ` · ${p.clock}` : '';
+      gameStr = `<span class="league-tag">${p.league}</span>${p.awayAbb} ${p.awaySc} @ ${p.homeAbb} ${p.homeSc} <span class="live-tag">${pl}${clockStr}</span>`;
+    } else if (isPre && p.startTime) {
+      // Pre-game: show teams and start time in gold
+      gameStr = `<span class="league-tag">${p.league}</span>${p.awayAbb} @ ${p.homeAbb} <span class="live-tag">${p.startTime}</span>`;
+    } else if (isDone) {
+      // Game over: no yellow, just show final score
+      gameStr = `<span class="league-tag">${p.league}</span>${p.awayAbb} ${p.awaySc} @ ${p.homeAbb} ${p.homeSc} FINAL`;
+    } else {
+    }
   } else if (p.league) {
-    gameStr = `<span class="league-tag">${p.league}</span>${isLive?'<span class="live-tag">LIVE</span>':''}`;
+    const timeStr = isPre && p.startTime ? `<span class="live-tag">${p.startTime}</span>` : (isLive && !isDone) ? '<span class="live-tag">LIVE</span>' : '';
+    gameStr = `<span class="league-tag">${p.league}</span>${timeStr}`;
   }
 
   let progHtml = '';
   if (p.current != null && p.line != null) {
     const cur = parseFloat(p.current)||0, lin = parseFloat(p.line)||1;
     const pct = Math.min((cur/lin)*100,100);
-    const cur_f = parseFloat(p.current)||0, lin_f = parseFloat(p.line)||1;
-    const win_f = p.wagerType==='over' ? cur_f>=lin_f : cur_f<=lin_f;
-    const done_f = p.gameFinished, live_f = p.inGame && !done_f;
+    const win_f = p.wagerType==='over' ? cur>=lin : cur<=lin;
     let fc = 'c-grey';
-    if (isWon||(done_f&&win_f)||(live_f&&win_f))  fc='c-green';
-    else if (isLost||(done_f&&!win_f))            fc='c-red';
-    else if (live_f&&!win_f)                      fc='c-white';
+    if (isWon||(isDone&&win_f)||(isLive&&win_f))  fc='c-green';
+    else if (isLost||(isDone&&!win_f))             fc='c-red';
+    else if (isLive&&!win_f)                       fc='c-white';
     progHtml = `<div class="prog-track"><div class="prog-fill ${fc}" style="width:${pct}%"></div></div>
     <div class="prog-labels"><span class="cur">${cur%1===0?cur:cur.toFixed(1)}</span><span class="lv">/ ${lin}</span></div>`;
   }
 
   const dir = p.wagerType==='over'?'↑':'↓';
   const dirCls = p.wagerType==='over'?'up':'down';
-  const odds = p.oddsType==='demon'?'👹 ':p.oddsType==='goblin'?'👺 ':'';
+  const odds = '';
   const resHtml = isWon?'<div class="res-lbl w">✓ WON</div>':isLost?'<div class="res-lbl l">✗ LOST</div>':'';
 
   const pickData = encodeURIComponent(JSON.stringify({league:p.league,awayAbb:p.awayAbb,homeAbb:p.homeAbb,name:p.name}));
