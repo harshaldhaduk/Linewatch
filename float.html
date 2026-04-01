@@ -17,13 +17,16 @@
 
   html, body {
     height: 100%;
+    width: 100%;
     background: transparent;
     font-family: -apple-system, 'SF Pro Text', sans-serif;
     user-select: none;
     overflow: hidden;
+    margin: 0; padding: 0;
   }
 
   #wrap {
+    height: 100%;
     background: rgba(80,80,85,0.82);
     backdrop-filter: blur(28px) saturate(200%);
     -webkit-backdrop-filter: blur(28px) saturate(200%);
@@ -50,7 +53,6 @@
 
   #titlebar-left {
     display: flex; align-items: center; gap: 8px;
-    -webkit-app-region: no-drag;
   }
 
   /* Traffic light close button */
@@ -62,6 +64,7 @@
     -webkit-app-region: no-drag;
     transition: opacity 0.15s;
     flex-shrink: 0;
+    position: relative; z-index: 1;
   }
   #close-btn:hover { opacity: 0.8; }
 
@@ -80,7 +83,6 @@
 
   #titlebar-right {
     display: flex; align-items: center; gap: 8px;
-    -webkit-app-region: no-drag;
   }
 
   #wl {
@@ -94,6 +96,7 @@
   #refresh-btn {
     font-size: 13px; color: var(--sub); cursor: pointer;
     padding: 2px 4px; border-radius: 4px; transition: color 0.15s;
+    -webkit-app-region: no-drag;
   }
   #refresh-btn:hover { color: var(--text); }
   #refresh-btn.spin { animation: spin 0.5s linear; }
@@ -156,6 +159,7 @@
   .name-row { display: flex; align-items: center; gap: 4px; margin-bottom: 2px; }
   .pname { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pbadge { font-size: 8px; font-weight: 600; color: var(--sub); background: var(--bg3); padding: 1px 3px; border-radius: 3px; flex-shrink: 0; }
+  .out-badge { font-size: 8px; font-weight: 700; color: var(--red); padding: 1px 3px; border-radius: 3px; border: 1px solid var(--red)66; flex-shrink: 0; }
   .game-row { font-size: 9px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
   .league-tag { background: var(--bg3); padding: 1px 3px; border-radius: 3px; font-weight: 600; margin-right: 2px; }
   .live-tag { color: var(--gold); font-weight: 600; }
@@ -191,10 +195,10 @@
   /* Resize handle */
   #resize-handle {
     position: fixed; bottom: 0; right: 0;
-    width: 16px; height: 16px;
+    width: 10px; height: 10px;
     cursor: nwse-resize;
     -webkit-app-region: no-drag;
-    opacity: 0.3;
+    opacity: 0;
     background: linear-gradient(135deg, transparent 50%, var(--sub) 50%);
     border-radius: 0 0 14px 0;
   }
@@ -241,8 +245,11 @@ function openPick(encoded) {
   const teams = p.awayAbb && p.homeAbb ? `${p.awayAbb} vs ${p.homeAbb}` : p.name;
 
   if (isEsport) {
-    const query = encodeURIComponent(`${teams} ${mon} ${dd} ${yyyy} gosugamers`);
-    shell.openExternal(`https://www.google.com/search?q=${query}&btnI=1`);
+    const searchTeams = (p.awayAbb && p.homeAbb) ? `${p.awayAbb} vs ${p.homeAbb}` 
+                      : p.matchTitle ? p.matchTitle 
+                      : p.name;
+    const query = encodeURIComponent(`${searchTeams} ${mon} ${dd} gosugamers`);
+    shell.openExternal(`https://www.google.com/search?q=${query}`);
   } else {
     const query = encodeURIComponent(`${teams} ${p.league} ${mon} ${dd} espn`);
     shell.openExternal(`https://www.google.com/search?q=${query}&btnI=1`);
@@ -278,10 +285,12 @@ ipcRenderer.on('picks-data', (_, { entries, error, accounts, activeAccount }) =>
   // Report height so window auto-sizes
   requestAnimationFrame(() => {
     const wrap = document.getElementById('wrap');
+    // Auto-size once on first load, then let user resize freely
     const titlebar = document.getElementById('titlebar');
     const body = document.getElementById('body');
-    if (titlebar && body) {
-      const h = titlebar.offsetHeight + body.scrollHeight + 2;
+    if (titlebar && body && !window._floatSized) {
+      window._floatSized = true;
+      const h = titlebar.offsetHeight + body.scrollHeight;
       ipcRenderer.send('float-height', h);
     }
   });
@@ -313,7 +322,12 @@ function render(entries, error) {
   }
 
   if (error) { body.innerHTML = `<div class="msg err">⚠️ ${error}</div>`; return; }
-  if (!entries || !entries.length) { body.innerHTML = `<div class="msg">No pending picks</div>`; return; }
+  if (!entries || !entries.length) {
+    body.innerHTML = `<div class="msg">No active picks</div>`;
+    document.getElementById('resize-handle').style.display = 'none';
+    return;
+  }
+  document.getElementById('resize-handle').style.display = '';
 
   body.innerHTML = entries.map((entry, ei) => `
     <div class="entry-hdr">
@@ -333,11 +347,15 @@ function pickHtml(p) {
   const isPre  = !p.inGame && !isDone && !isWon && !isLost;
   const cur2 = parseFloat(p.current)||0, lin2 = parseFloat(p.line)||1;
   const winning2 = p.wagerType === 'over' ? cur2 >= lin2 : cur2 <= lin2;
+  const isOver2 = p.wagerType === 'over';
+  const underBusted2 = !isOver2 && isLive && cur2 > lin2;
+  const overWinning2 = isOver2 && isLive && winning2;
   let ringCls = '';
-  if (isWon || (isDone && winning2) || (isLive && winning2)) ringCls = 'won-r';
-  else if (isLost || (isDone && !winning2))                  ringCls = 'lost-r';
-  else if (isLive && !winning2)                              ringCls = 'live-r';
-  const boxCls = isWon || (isDone && winning2) ? 'won-box' : isLost || (isDone && !winning2) ? 'lost-box' : '';
+  if (isWon || (isDone && winning2))    ringCls = 'won-r';
+  else if ((isDone && !winning2) || underBusted2) ringCls = 'lost-r';
+  else if (overWinning2)                ringCls = 'won-r';
+  else if (isLive)                      ringCls = 'live-r';
+  const boxCls = isWon || (isDone && winning2) ? 'won-box' : (isDone && !winning2) || underBusted2 ? 'lost-box' : '';
 
   const avHtml = p.imgUrl
     ? `<img class="av ${ringCls}" src="${p.imgUrl}" onerror="this.outerHTML='<div class=\\'av-ph\\'>👤</div>'">`
@@ -364,7 +382,9 @@ function pickHtml(p) {
     }
   } else if (p.league) {
     const timeStr = isPre && p.startTime ? `<span class="live-tag">${p.startTime}</span>` : (isLive && !isDone) ? '<span class="live-tag">LIVE</span>' : '';
-    gameStr = `<span class="league-tag">${p.league}</span>${timeStr}`;
+    // Show match title if available (for esports Underdog picks)
+    const matchTitle = p.matchTitle ? `${p.matchTitle} ` : '';
+    gameStr = `<span class="league-tag">${p.league}</span>${matchTitle}${timeStr}`;
   }
 
   let progHtml = '';
@@ -373,9 +393,12 @@ function pickHtml(p) {
     const pct = Math.min((cur/lin)*100,100);
     const win_f = p.wagerType==='over' ? cur>=lin : cur<=lin;
     let fc = 'c-grey';
-    if (isWon||(isDone&&win_f)||(isLive&&win_f))  fc='c-green';
-    else if (isLost||(isDone&&!win_f))             fc='c-red';
-    else if (isLive&&!win_f)                       fc='c-white';
+    const isOver_f = p.wagerType === 'over';
+    const underBusted_f = !isOver_f && isLive && cur > lin;
+    if (isWon||(isDone&&win_f))                    fc='c-green';
+    else if ((isDone&&!win_f)||underBusted_f)      fc='c-red';
+    else if (isLive&&isOver_f&&win_f)              fc='c-green';
+    else if (isLive)                               fc='c-white';
     progHtml = `<div class="prog-track"><div class="prog-fill ${fc}" style="width:${pct}%"></div></div>
     <div class="prog-labels"><span class="cur">${cur%1===0?cur:cur.toFixed(1)}</span><span class="lv">/ ${lin}</span></div>`;
   }
@@ -383,13 +406,29 @@ function pickHtml(p) {
   const dir = p.wagerType==='over'?'↑':'↓';
   const dirCls = p.wagerType==='over'?'up':'down';
   const odds = '';
+  const statAbbr = {
+    'Points + Rebounds + Assists': 'PRA',
+    'Points + Rebounds': 'Pts+Reb',
+    'Points + Assists': 'Pts+Ast',
+    'Rebounds + Assists': 'Reb+Ast',
+    'Pts + Rebs + Asts': 'PRA',
+    'REBS+ASTS': 'Reb+Ast',
+    'Maps 1-2 Kills': 'M1-2 K',
+    'Maps 1-3 Kills': 'M1-3 K',
+    'Pitcher Strikeouts': "K's",
+    'Hitter Strikeouts': 'SO',
+    'Total Runs': 'Runs',
+    'Margin Of Victory': 'MOV',
+    'Margin of Victory': 'MOV',
+  };
+  const statDisplay = statAbbr[p.statName] || p.statName;
   const resHtml = isWon?'<div class="res-lbl w">✓ WON</div>':isLost?'<div class="res-lbl l">✗ LOST</div>':'';
 
   const pickData = encodeURIComponent(JSON.stringify({league:p.league,awayAbb:p.awayAbb,homeAbb:p.homeAbb,name:p.name}));
   return `<div class="pick" onclick="openPick('${pickData}')">
     ${avHtml}
     <div class="mid">
-      <div class="name-row"><div class="pname">${p.name}</div>${p.pos?`<div class="pbadge">${p.pos}</div>`:''}</div>
+      <div class="name-row"><div class="pname">${p.name}</div>${p.pos?`<div class="pbadge">${p.pos}</div>`:''} ${(p.playerOut && isLive) ? '<div class="out-badge">OUT</div>' : ''}</div>
       ${gameStr?`<div class="game-row">${gameStr}</div>`:''}
       ${progHtml}
     </div>

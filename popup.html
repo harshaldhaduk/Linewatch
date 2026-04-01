@@ -122,11 +122,15 @@
     display: flex; align-items: center; justify-content: center;
     font-size: 18px; flex-shrink: 0;
   }
+  .av-ph.won-r  { border-color: var(--green); box-shadow: 0 0 8px #4ade8066; }
+  .av-ph.lost-r { border-color: var(--red);   box-shadow: 0 0 8px #f8717166; }
+  .av-ph.live-r { border-color: #fff; animation: live-pulse 1.4s ease-in-out infinite; }
 
   .mid { min-width: 0; }
   .name-row { display: flex; align-items: center; gap: 5px; margin-bottom: 2px; }
   .pname { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pbadge { font-size: 9px; font-weight: 600; color: var(--sub); background: var(--bg3); padding: 1px 4px; border-radius: 3px; flex-shrink: 0; }
+  .out-badge { font-size: 9px; font-weight: 700; color: var(--red); padding: 1px 4px; border-radius: 3px; border: 1px solid var(--red)66; flex-shrink: 0; }
   .game-row { font-size: 10px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 5px; }
   .league-tag { background: var(--bg3); padding: 1px 4px; border-radius: 3px; font-weight: 600; margin-right: 3px; }
   .live-tag { color: var(--gold); font-weight: 600; }
@@ -223,8 +227,9 @@ function openPick(encoded) {
   const teams = p.awayAbb && p.homeAbb ? `${p.awayAbb} vs ${p.homeAbb}` : p.name;
 
   if (isEsport) {
-    const query = encodeURIComponent(`${teams} ${mon} ${dd} ${yyyy} gosugamers`);
-    shell.openExternal(`https://www.google.com/search?q=${query}&btnI=1`);
+    const searchTeams = p.matchTitle || p.name;
+    const query = encodeURIComponent(`${searchTeams} ${mon} ${dd} gosugamers`);
+    shell.openExternal(`https://www.google.com/search?q=${query}`);
   } else {
     const query = encodeURIComponent(`${teams} ${p.league} ${mon} ${dd} espn`);
     shell.openExternal(`https://www.google.com/search?q=${query}&btnI=1`);
@@ -273,38 +278,45 @@ function render(entries, error) {
 }
 
 function pickHtml(p) {
-  const isWon   = ['won','correct','win'].includes(p.result);
-  const isLost  = ['lost','incorrect','loss'].includes(p.result);
+  const _ppWon  = ['won','correct','win'].includes(p.result);
+  const _ppLost = ['lost','incorrect','loss'].includes(p.result);
   const isDone  = p.gameFinished;
-  const isLive  = p.inGame && !isDone && !isWon && !isLost;
-  const isPre   = !p.inGame && !isDone && !isWon && !isLost;
+  // Trust result from API directly (Underdog sets result='won' without gameFinished)
+  const isWon   = _ppWon;
+  const isLost  = _ppLost;
+  const isLive  = p.inGame && !isDone;
+  const isPre   = !p.inGame && !isDone && !_ppWon && !_ppLost;
 
-  const cur = parseFloat(p.current) || 0;
+  const cur = p.current != null ? parseFloat(p.current) : null;
   const lin = parseFloat(p.line) || 1;
-  // "winning" = currently beating the line (over is above, under is below)
-  const winning = p.wagerType === 'over' ? cur >= lin : cur <= lin;
+  // "winning" = currently beating the line — only meaningful when cur is not null
+  const winning = cur != null ? (p.wagerType === 'over' ? cur >= lin : cur <= lin) : false;
 
   // Ring logic:
   // - game over + winning OR live + winning = green (no pulse)
   // - game over + losing = red (no pulse)
   // - live + losing = white pulse
   // - pre-game = no ring
+  const isOver = p.wagerType === 'over';
+  // Under pick: if cur already exceeds line, it's mathematically lost (can't go back down)
+  const underBusted = !isOver && isLive && cur > lin;
+  // Over pick: beating line while live
+  const overWinning = isOver && isLive && winning;
+
   let ringCls = '';
-  if (isWon || (isDone && winning) || (isLive && winning)) ringCls = 'won-r';
-  else if (isLost || (isDone && !winning))                 ringCls = 'lost-r';
-  else if (isLive && !winning)                             ringCls = 'live-r';
+  if (isWon || (isDone && winning))   ringCls = 'won-r';
+  else if (isDone && !winning)        ringCls = 'lost-r';
+  else if (underBusted)               ringCls = 'lost-r';  // under already blown
+  else if (overWinning)               ringCls = 'won-r';   // over beating line
+  else if (isLive)                    ringCls = 'live-r';  // white pulse otherwise
 
-  const boxCls = isWon || (isDone && winning) ? 'won-box' : isLost || (isDone && !winning) ? 'lost-box' : '';
+  const boxCls = isWon || (isDone && winning) ? 'won-box' : (isDone && !winning) || underBusted ? 'lost-box' : '';
 
-  // Progress bar:
-  // - won, game over + winning, OR live + winning = green
-  // - lost or game over + losing = red
-  // - live + losing = white
-  // - pre-game = grey
   let fillCls = 'c-grey';
-  if (isWon || (isDone && winning) || (isLive && winning)) fillCls = 'c-green';
-  else if (isLost || (isDone && !winning))                 fillCls = 'c-red';
-  else if (isLive && !winning)                             fillCls = 'c-white';
+  if (isWon || (isDone && winning))   fillCls = 'c-green';
+  else if ((isDone && !winning) || underBusted) fillCls = 'c-red';
+  else if (overWinning)               fillCls = 'c-green';
+  else if (isLive)                    fillCls = 'c-white';
 
   const pct = Math.min((cur / lin) * 100, 100);
 
@@ -319,7 +331,10 @@ function pickHtml(p) {
       const isHalftime = p.clock === '00:00' && (p.period === 2 || p.period === '2') && p.punit === 'quarter';
       let pl;
       if (isHalftime) pl = 'Halftime';
-      else pl = p.punit==='quarter'?`Q${p.period}`:p.punit==='half'?`H${p.period}`:`P${p.period}`;
+      else if (p.punit === 'inning') pl = `I${p.period}`;
+      else if (p.punit === 'period') pl = `P${p.period}`;
+      else if (p.punit === 'half') pl = `H${p.period}`;
+      else pl = `Q${p.period}`;
       const clockStr = (isHalftime || p.clock === '00:00') ? '' : p.clock ? ` · ${p.clock}` : '';
       gameStr = `<span class="league-tag">${p.league}</span>${p.awayAbb} ${p.awaySc} @ ${p.homeAbb} ${p.homeSc} <span class="live-tag">${pl}${clockStr}</span>`;
     } else if (isPre && p.startTime) {
@@ -332,7 +347,9 @@ function pickHtml(p) {
     }
   } else if (p.league) {
     const timeStr = isPre && p.startTime ? `<span class="live-tag">${p.startTime}</span>` : (isLive && !isDone) ? '<span class="live-tag">LIVE</span>' : '';
-    gameStr = `<span class="league-tag">${p.league}</span>${timeStr}`;
+    // Show match title if available (for esports Underdog picks)
+    const matchTitle = p.matchTitle ? `${p.matchTitle} ` : '';
+    gameStr = `<span class="league-tag">${p.league}</span>${matchTitle}${timeStr}`;
   }
 
   const progHtml = p.current != null && p.line != null ? `
@@ -342,13 +359,29 @@ function pickHtml(p) {
   const dir = p.wagerType==='over'?'↑':'↓';
   const dirCls = p.wagerType==='over'?'up':'down';
   const odds = '';
+  const statAbbr = {
+    'Points + Rebounds + Assists': 'PRA',
+    'Points + Rebounds': 'Pts+Reb',
+    'Points + Assists': 'Pts+Ast',
+    'Rebounds + Assists': 'Reb+Ast',
+    'Pts + Rebs + Asts': 'PRA',
+    'REBS+ASTS': 'Reb+Ast',
+    'Maps 1-2 Kills': 'M1-2 K',
+    'Maps 1-3 Kills': 'M1-3 K',
+    'Pitcher Strikeouts': "K's",
+    'Hitter Strikeouts': 'SO',
+    'Total Runs': 'Runs',
+    'Margin Of Victory': 'MOV',
+    'Margin of Victory': 'MOV',
+  };
+  const statDisplay = statAbbr[p.statName] || p.statName;
   const resHtml = isWon?'<div class="res-lbl w">✓ WON</div>':isLost?'<div class="res-lbl l">✗ LOST</div>':'';
 
   const pickData = encodeURIComponent(JSON.stringify({league:p.league,awayAbb:p.awayAbb,homeAbb:p.homeAbb,name:p.name}));
   return `<div class="pick" onclick="openPick('${pickData}')">
     ${avHtml}
     <div class="mid">
-      <div class="name-row"><div class="pname">${p.name}</div>${p.pos?`<div class="pbadge">${p.pos}</div>`:''}</div>
+      <div class="name-row"><div class="pname">${p.name}</div>${p.pos?`<div class="pbadge">${p.pos}</div>`:''} ${(p.playerOut && isLive) ? '<div class="out-badge">OUT</div>' : ''}</div>
       ${gameStr?`<div class="game-row">${gameStr}</div>`:''}
       ${progHtml}
     </div>

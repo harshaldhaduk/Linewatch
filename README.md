@@ -37,10 +37,9 @@ After this, the app starts automatically every time you open Terminal.
 
 ## Common Commands
 
-### Restart the app
+### Restart the app (Use to fix Auth_Expired)
 ```
-pkill -f "electron.*prizepicks" 2>/dev/null
-~/Projects/prizepicks-overlay/node_modules/.bin/electron ~/Projects/prizepicks-overlay & disown
+python3 ~/Projects/prizepicks-overlay/auto-cookie.py && pkill -f "electron.*prizepicks" 2>/dev/null; ~/Projects/prizepicks-overlay/node_modules/.bin/electron ~/Projects/prizepicks-overlay & disown
 ```
 
 ### Start the app (if not running)

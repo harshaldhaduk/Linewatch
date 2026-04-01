@@ -4,3 +4,4 @@ node_modules
 err.log
 out.log
 nohup.out
+.ud_creds.json

@@ -149,5 +149,120 @@ def main():
         with open(COOKIE_FILE,'w') as f: json.dump({"account":0,"cookie":saved[0]}, f)
         print(f"  ✅ All {len(found)} account(s) updated!\n")
 
+    # Extract Underdog token (always from Default profile = Acc 1)
+    print("  Extracting Underdog Fantasy token...")
+    ud_token, ud_err = extract_underdog(key)
+    if ud_token:
+        with open(UD_TOKEN_FILE, 'w') as f:
+            json.dump({"token": ud_token}, f)
+        print("  ✓ Underdog token updated\n")
+    else:
+        print(f"  ⚠ Underdog: {ud_err} (skipping)\n")
+
+# ── Underdog Fantasy token extraction ────────────────────────────────────────
+import urllib.request, ssl
+
+UD_TOKEN_FILE = os.path.join(APP_DIR, '.ud_token.json')
+
+def ud_cookies_from_profile(path, key):
+    """Extract Underdog session cookies from Edge profile."""
+    db = os.path.join(path, 'Cookies')
+    if not os.path.exists(db): return None
+    tmp = f"/tmp/ud_{os.path.basename(path)}.db"
+    try: shutil.copy2(db, tmp)
+    except: return None
+    try:
+        conn = sqlite3.connect(tmp)
+        rows = conn.execute("SELECT name,value,encrypted_value FROM cookies WHERE host_key LIKE '%underdogfantasy%' OR host_key LIKE '%underdogsports%'").fetchall()
+        conn.close()
+    except: return None
+    finally:
+        try: os.unlink(tmp)
+        except: pass
+
+    c = {}
+    for name, val, enc in rows:
+        if val: c[name] = val
+        elif enc:
+            d = decrypt(bytes(enc), key)
+            if d: c[name] = d
+
+    return c if ('session_refresh' in c or any('dcdd' in k for k in c)) else None
+
+def ud_refresh_token(cookies):
+    """Use session_refresh cookie to get a fresh Bearer token."""
+    refresh = cookies.get('session_refresh', '')
+    if not refresh:
+        return None
+
+    # Build cookie string for the token refresh request
+    cookie_str = '; '.join(f'{k}={v}' for k,v in cookies.items()
+                           if 'underdog' in k.lower() or k in ['session_refresh', 'cf_clearance', '__cf_bm', '_cfuvid', 'ud-device-id'])
+
+    try:
+        ctx = ssl._create_unverified_context()
+        req = urllib.request.Request(
+            'https://api.underdogfantasy.com/v1/user/token',
+            method='GET',
+            headers={
+                'accept': 'application/json',
+                'cookie': cookie_str,
+                'origin': 'https://app.underdogfantasy.com',
+                'referer': 'https://app.underdogfantasy.com/',
+                'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+                'client-type': 'web',
+            }
+        )
+        resp = urllib.request.urlopen(req, timeout=10, context=ctx)
+        data = json.loads(resp.read())
+        token = data.get('data', {}).get('token') or data.get('token')
+        if token:
+            return token
+    except Exception as e:
+        pass
+
+    # Fallback: try the auth0 refresh endpoint
+    try:
+        ctx = ssl._create_unverified_context()
+        # Get the device id
+        device_id = cookies.get('ud-device-id', 'unknown')
+        post_data = json.dumps({
+            'grant_type': 'refresh_token',
+            'refresh_token': refresh,
+            'client_id': 'cQvYz1T2BAFbix4dYR37dyD9O0Thf1s6',
+            'audience': 'https://api.underdogfantasy.com',
+            'scope': 'offline_access',
+        }).encode()
+        req = urllib.request.Request(
+            'https://login.underdogsports.com/oauth/token',
+            data=post_data,
+            method='POST',
+            headers={
+                'content-type': 'application/json',
+                'origin': 'https://app.underdogfantasy.com',
+                'user-agent': 'Mozilla/5.0',
+            }
+        )
+        resp = urllib.request.urlopen(req, timeout=10, context=ctx)
+        data = json.loads(resp.read())
+        return data.get('access_token')
+    except Exception as e:
+        pass
+
+    return None
+
+def extract_underdog(key):
+    """Extract Underdog token from Default Edge profile."""
+    default_path = os.path.join(EDGE_BASE, 'Default')
+    cookies = ud_cookies_from_profile(default_path, key)
+    if not cookies:
+        return None, "No Underdog session found in Edge Default profile"
+
+    token = ud_refresh_token(cookies)
+    if not token:
+        return None, "Failed to refresh Underdog token"
+
+    return token, None
+
 if __name__ == '__main__':
     main()
