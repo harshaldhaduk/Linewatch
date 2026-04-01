@@ -5,3 +5,5 @@ err.log
 out.log
 nohup.out
 .ud_creds.json
+.saved_cookies.json
+.ud_token.json
