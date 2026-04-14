@@ -154,6 +154,26 @@
     display: flex; align-items: center; justify-content: center;
     font-size: 17px; flex-shrink: 0;
   }
+  .av-teams {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--bg3); border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    gap: 2px; padding: 6px; overflow: hidden; flex-shrink: 0;
+  }
+  .av-teams img { flex: 1; height: 100%; object-fit: contain; }
+  .av-teams.won-r  { border-color: var(--green); box-shadow: 0 0 7px #22c55e55; }
+  .av-teams.lost-r { border-color: var(--red);   box-shadow: 0 0 7px #ef444455; }
+  .av-teams.live-r { border-color: #fff; animation: live-pulse 1.4s ease-in-out infinite; }
+  .av-logo {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--bg3); border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    padding: 6px; overflow: hidden; flex-shrink: 0;
+  }
+  .av-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .av-logo.won-r  { border-color: var(--green); box-shadow: 0 0 7px #22c55e55; }
+  .av-logo.lost-r { border-color: var(--red);   box-shadow: 0 0 7px #ef444455; }
+  .av-logo.live-r { border-color: #fff; animation: live-pulse 1.4s ease-in-out infinite; }
 
   .mid { min-width: 0; }
   .name-row { display: flex; align-items: center; gap: 4px; margin-bottom: 2px; }
@@ -185,7 +205,7 @@
   .dir { font-size: 12px; line-height: 1; margin-bottom: 1px; }
   .dir.up { color: var(--green); } .dir.down { color: var(--red); }
   .linenum { font-size: 13px; font-weight: 800; color: var(--text); line-height: 1; }
-  .statlbl { font-size: 7px; font-weight: 600; color: var(--sub); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px; }
+  .statlbl { font-size: 7px; font-weight: 600; color: var(--sub); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .res-lbl { font-size: 8px; font-weight: 800; margin-top: 2px; }
   .res-lbl.w { color: var(--green); } .res-lbl.l { color: var(--red); }
 
@@ -213,10 +233,10 @@
       <div id="header-dots"></div>
     </div>
     <div id="titlebar-right">
-      <div id="account-switcher" style="display:none;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--sub);">
-        <span onclick="prevAccount()" style="cursor:pointer;padding:1px 4px" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--sub)'">‹</span>
+      <div id="account-switcher" style="display:none;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--sub);-webkit-app-region:no-drag;">
+        <span onclick="prevAccount()" style="cursor:pointer;padding:1px 4px;-webkit-app-region:no-drag;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--sub)'">‹</span>
         <span id="account-label"></span>
-        <span onclick="nextAccount()" style="cursor:pointer;padding:1px 4px" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--sub)'">›</span>
+        <span onclick="nextAccount()" style="cursor:pointer;padding:1px 4px;-webkit-app-region:no-drag;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--sub)'">›</span>
       </div>
       <div id="wl"></div>
       <div id="refresh-btn" onclick="doRefresh()">↻</div>
@@ -251,7 +271,7 @@ function openPick(encoded) {
     const query = encodeURIComponent(`${searchTeams} ${mon} ${dd} gosugamers`);
     shell.openExternal(`https://www.google.com/search?q=${query}`);
   } else {
-    const query = encodeURIComponent(`${teams} ${p.league} ${mon} ${dd} espn`);
+    const query = encodeURIComponent(`${teams} ${mon} ${dd} espn`);
     shell.openExternal(`https://www.google.com/search?q=${query}&btnI=1`);
   }
 }
@@ -350,15 +370,24 @@ function pickHtml(p) {
   const isOver2 = p.wagerType === 'over';
   const underBusted2 = !isOver2 && isLive && cur2 > lin2;
   const overWinning2 = isOver2 && isLive && winning2;
-  let ringCls = '';
-  if (isWon || (isDone && winning2))    ringCls = 'won-r';
-  else if ((isDone && !winning2) || underBusted2) ringCls = 'lost-r';
-  else if (overWinning2)                ringCls = 'won-r';
-  else if (isLive)                      ringCls = 'live-r';
-  const boxCls = isWon || (isDone && winning2) ? 'won-box' : (isDone && !winning2) || underBusted2 ? 'lost-box' : '';
+  const isTeamPick = p.source === 'underdog' && !p.imgUrl;
 
+  let ringCls = '';
+  if (isWon || (isDone && winning2))                                          ringCls = 'won-r';
+  else if (isLost || (isDone && !winning2) || (!isTeamPick && underBusted2)) ringCls = 'lost-r';
+  else if (!isTeamPick && overWinning2)                                       ringCls = 'won-r';
+  else if (isLive)                                                            ringCls = 'live-r';
+  const boxCls = (isWon || (isDone && winning2)) ? 'won-box' : (isLost || (isDone && !winning2) || (!isTeamPick && underBusted2)) ? 'lost-box' : '';
+
+  const _lg = (p.league||'').toLowerCase();
+  const _isTotal = /total|o\/u|runs|goals/i.test(p.statName||'');
+  const _teamAbb = (p.name||'').toUpperCase().includes((p.awayAbb||'').toUpperCase()) ? p.awayAbb : p.homeAbb;
   const avHtml = p.imgUrl
     ? `<img class="av ${ringCls}" src="${p.imgUrl}" onerror="this.outerHTML='<div class=\\'av-ph\\'>👤</div>'">`
+    : (p.source === 'underdog' && p.awayAbb && p.homeAbb)
+    ? _isTotal
+      ? `<div class="av-teams ${ringCls}"><img src="https://a.espncdn.com/i/teamlogos/${_lg}/500/${p.awayAbb.toLowerCase()}.png" onerror="this.style.display='none'"><img src="https://a.espncdn.com/i/teamlogos/${_lg}/500/${p.homeAbb.toLowerCase()}.png" onerror="this.style.display='none'"></div>`
+      : `<div class="av-logo ${ringCls}"><img src="https://a.espncdn.com/i/teamlogos/${_lg}/500/${_teamAbb.toLowerCase()}.png" onerror="this.parentElement.outerHTML='<div class=\\'av-ph\\'>👤</div>'"></div>`
     : `<div class="av-ph">👤</div>`;
 
   let gameStr = '';
@@ -388,17 +417,17 @@ function pickHtml(p) {
   }
 
   let progHtml = '';
-  if (p.current != null && p.line != null) {
-    const cur = parseFloat(p.current)||0, lin = parseFloat(p.line)||1;
+  if (p.line != null) {
+    const cur = parseFloat(p.current != null ? p.current : 0)||0, lin = parseFloat(p.line)||1;
     const pct = Math.min((cur/lin)*100,100);
     const win_f = p.wagerType==='over' ? cur>=lin : cur<=lin;
     let fc = 'c-grey';
     const isOver_f = p.wagerType === 'over';
     const underBusted_f = !isOver_f && isLive && cur > lin;
-    if (isWon||(isDone&&win_f))                    fc='c-green';
-    else if ((isDone&&!win_f)||underBusted_f)      fc='c-red';
-    else if (isLive&&isOver_f&&win_f)              fc='c-green';
-    else if (isLive)                               fc='c-white';
+    if (isWon||(isDone&&win_f))                                       fc='c-green';
+    else if (isLost||(isDone&&!win_f)||(!isTeamPick&&underBusted_f)) fc='c-red';
+    else if (!isTeamPick&&isLive&&isOver_f&&win_f)                   fc='c-green';
+    else if (isLive)                                                  fc='c-white';
     progHtml = `<div class="prog-track"><div class="prog-fill ${fc}" style="width:${pct}%"></div></div>
     <div class="prog-labels"><span class="cur">${cur%1===0?cur:cur.toFixed(1)}</span><span class="lv">/ ${lin}</span></div>`;
   }
@@ -412,6 +441,8 @@ function pickHtml(p) {
     'Points + Assists': 'Pts+Ast',
     'Rebounds + Assists': 'Reb+Ast',
     'Pts + Rebs + Asts': 'PRA',
+    'Pts + Rebounds + Assists': 'PRA',
+    'Points + Rebs + Asts': 'PRA',
     'REBS+ASTS': 'Reb+Ast',
     'Maps 1-2 Kills': 'M1-2 K',
     'Maps 1-3 Kills': 'M1-3 K',
@@ -420,6 +451,9 @@ function pickHtml(p) {
     'Total Runs': 'Runs',
     'Margin Of Victory': 'MOV',
     'Margin of Victory': 'MOV',
+    'Hits+Runs+RBIs': 'HRR',
+    'Hits + Runs + RBIs': 'HRR',
+    'H+R+RBI': 'HRR',
   };
   const statDisplay = statAbbr[p.statName] || p.statName;
   const resHtml = isWon?'<div class="res-lbl w">✓ WON</div>':isLost?'<div class="res-lbl l">✗ LOST</div>':'';
@@ -435,7 +469,7 @@ function pickHtml(p) {
     <div class="linebox ${boxCls}">
       <div class="dir ${dirCls}">${dir}</div>
       <div class="linenum">${p.line}</div>
-      <div class="statlbl">${odds}${p.statName}</div>
+      <div class="statlbl">${odds}${statDisplay}</div>
       ${resHtml}
     </div>
   </div>`;
