@@ -7,3 +7,9 @@ nohup.out
 .ud_creds.json
 .saved_cookies.json
 .ud_token.json
+.onyx_token.json
+.ud_auth_state.json
+.onyx_raw.json
+.ud_token.json.logged-out-*
+.ud_token.json.stale-*
+__pycache__/

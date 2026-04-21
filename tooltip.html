@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: transparent;
+    font-family: -apple-system, 'SF Pro Text', sans-serif;
+    user-select: none;
+    padding: 6px;
+  }
+  #card {
+    background: rgba(12,12,20,0.97);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 13px;
+    overflow: hidden;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.85), 0 0 0 0.5px rgba(255,255,255,0.06);
+  }
+  #hero {
+    display: flex; align-items: center; gap: 11px;
+    padding: 13px 14px 11px;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  #avatar {
+    width: 50px; height: 50px; border-radius: 50%;
+    object-fit: cover; border: 2px solid rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.08); flex-shrink: 0;
+  }
+  #avatar-logo {
+    width: 50px; height: 50px; border-radius: 10px;
+    border: 2px solid rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: center;
+    padding: 6px; flex-shrink: 0; overflow: hidden;
+  }
+  #avatar-logo img { width: 100%; height: 100%; object-fit: contain; }
+  #avatar-ph {
+    width: 50px; height: 50px; border-radius: 50%;
+    background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.14);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; flex-shrink: 0;
+  }
+  #info { min-width: 0; flex: 1; }
+  #pname {
+    font-size: 13px; font-weight: 700; color: #fff;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #pmeta { font-size: 10px; color: rgba(255,255,255,0.45); margin-top: 3px; }
+  #bet-pill {
+    display: inline-block; margin-top: 5px;
+    background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.3);
+    border-radius: 5px; padding: 2px 7px;
+    font-size: 9px; font-weight: 700; color: #fbbf24;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 140px;
+  }
+  #stats {
+    padding: 10px 14px 12px;
+  }
+  .srow {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 10px; margin-bottom: 6px;
+  }
+  .srow:last-child { margin-bottom: 0; }
+  .slbl { font-size: 10px; color: rgba(255,255,255,0.42); flex-shrink: 0; }
+  .sdot { flex: 1; border-bottom: 1px dotted rgba(255,255,255,0.1); margin-bottom: 2px; }
+  .sval { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.82); }
+  .sval.hi { color: #fbbf24; font-size: 12px; }
+  .slbl.hi { color: rgba(251,191,36,0.7); }
+  .sdiv { height: 1px; background: rgba(255,255,255,0.06); margin: 6px 0; }
+  #no-stats { color: rgba(255,255,255,0.3); font-size: 11px; text-align: center; padding: 10px 0; }
+</style>
+</head>
+<body>
+<div id="card">
+  <div id="hero">
+    <div id="avatar-ph">👤</div>
+    <div id="info">
+      <div id="pname">—</div>
+      <div id="pmeta"></div>
+    </div>
+  </div>
+  <div id="stats"></div>
+</div>
+<script>
+const { ipcRenderer } = require('electron');
+
+const STAT_LABELS = {
+  'MIN':'Minutes',  'PTS':'Points',    'REB':'Rebounds',   'AST':'Assists',
+  'STL':'Steals',   'BLK':'Blocks',    'TO':'Turnovers',   'PF':'Fouls',
+  'FG':'Field Goals','3PT':'3-Pointers','3PM':'3-Pointers', 'FT':'Free Throws',
+  'FTA':'FT Attempts','FG%':'FG%',      '3P%':'3PT%',
+  'IP':'Inn. Pitched','H':'Hits',       'R':'Runs',         'ER':'Earned Runs',
+  'BB':'Walks',     'K':'Strikeouts',  'SO':'Strikeouts',  'ERA':'ERA',
+  'AB':'At Bats',   'RBI':'RBI',       'HR':'Home Runs',   'SB':'Stolen Bases',
+  'TB':'Total Bases','PC-ST':'Pitch Count',
+  'G':'Goals',      'A':'Assists',     '+/-':'+/-',        'SOG':'Shots on Goal',
+  'HIT':'Hits',     'PIM':'Pen. Min.',
+  'C/ATT':'Comp/Att','YDS':'Yards',    'TD':'Touchdowns',  'INT':'Intercepts',
+  'SCK':'Sacks',    'QBR':'QBR',       'CAR':'Carries',    'REC':'Receptions',
+  'TGT':'Targets',  'LNG':'Long',      'FUM':'Fumbles',
+  'FC':'Fouls',     'YC':'Yellow Card','RC':'Red Card',    'OFF':'Offsides',
+  'SH':'Shots',     'S':'Shots',       'SV':'Saves',
+};
+
+const SK = {
+  NBA:    ['PTS','REB','AST','STL','BLK','TO','PF','MIN','FG','3PM','FT'],
+  WNBA:   ['PTS','REB','AST','STL','BLK','TO','PF','MIN','FG','3PM','FT'],
+  MLB_P:  ['IP','H','R','ER','BB','K','PC-ST','ERA'],
+  MLB_B:  ['AB','H','R','RBI','HR','BB','K','SB','TB'],
+  NHL:    ['G','A','+/-','SOG','HIT','BLK','PIM'],
+  NFL:    ['C/ATT','YDS','TD','INT','SCK','QBR','CAR','REC','TGT','LNG','FUM'],
+  SOCCER: ['G','A','SH','SOG','FC','YC','RC','OFF','MIN'],
+};
+
+function getKeys(league, statName) {
+  const l = (league||'').toUpperCase(), s = (statName||'').toLowerCase();
+  if (l==='NBA'||l==='WNBA') return SK.NBA;
+  if (l==='MLB') return (s.includes('pitch')||s.includes('outs')||s.includes('era')) ? SK.MLB_P : SK.MLB_B;
+  if (l==='NHL') return SK.NHL;
+  if (l==='NFL'||l==='CFB'||l==='NCAAF') return SK.NFL;
+  if (l==='MLS'||l==='EPL'||l==='NWSL') return SK.SOCCER;
+  return null;
+}
+
+function hiCols(statName) {
+  const s = (statName||'').toLowerCase();
+  if (/pra|pts.*reb.*ast/.test(s))        return ['PTS','REB','AST'];
+  if (/pts.*reb|points.*rebounds/.test(s)) return ['PTS','REB'];
+  if (/pts.*ast|points.*assists/.test(s))  return ['PTS','AST'];
+  if (/reb.*ast/.test(s))                  return ['REB','AST'];
+  if (s.includes('points'))    return ['PTS'];
+  if (s.includes('rebounds'))  return ['REB'];
+  if (s.includes('assists'))   return ['AST'];
+  if (s.includes('steals'))    return ['STL'];
+  if (s.includes('blocks'))    return ['BLK'];
+  if (s.includes('turnovers')) return ['TO'];
+  if (s.includes('threes')||s.includes('3-point')) return ['3PT','3PM'];
+  if (s.includes('strikeout')||s.includes('pitching')) return ['K','SO','IP'];
+  if (/hits.*runs.*rbi/.test(s)) return ['H','R','RBI'];
+  if (s.includes('home run'))  return ['HR'];
+  if (s.includes('rbi'))       return ['RBI'];
+  if (s.includes('hits'))      return ['H'];
+  if (s.includes('passing'))   return ['C/ATT','YDS','TD','INT'];
+  if (s.includes('rush')||s.includes('carry')) return ['CAR','YDS','TD'];
+  if (s.includes('receiv'))    return ['REC','TGT','YDS','TD'];
+  if (s.includes('goals'))     return ['G'];
+  if (s.includes('shots'))     return ['SOG','SH'];
+  if (s.includes('saves'))     return ['SV'];
+  return [];
+}
+
+ipcRenderer.on('tip-data', (_, d) => {
+  const { stats, league, statName, name, pos, imgUrl, teamAbb, lg } = d;
+
+  // Avatar
+  let avHtml;
+  if (imgUrl) {
+    avHtml = `<img id="avatar" src="${imgUrl}" onerror="this.outerHTML='<div id=\\'avatar-ph\\'>👤</div>'">`;
+  } else if (teamAbb && lg) {
+    avHtml = `<div id="avatar-logo"><img src="https://a.espncdn.com/i/teamlogos/${lg}/500/${(teamAbb||'').toLowerCase()}.png" onerror="this.parentElement.outerHTML='<div id=\\'avatar-ph\\'>👤</div>'"></div>`;
+  } else {
+    avHtml = `<div id="avatar-ph">👤</div>`;
+  }
+
+  const metaParts = [pos, (teamAbb||'').toUpperCase()].filter(Boolean);
+  const leagueStr = (league||'').toUpperCase();
+  const betPillHtml = statName ? `<div id="bet-pill">${statName}</div>` : '';
+  document.getElementById('hero').innerHTML =
+    avHtml +
+    `<div id="info"><div id="pname">${name||'—'}</div><div id="pmeta">${metaParts.join(' · ')}${metaParts.length&&leagueStr?' · ':' '}${leagueStr}</div>${betPillHtml}</div>`;
+
+  const statsEl = document.getElementById('stats');
+  const wantKeys = getKeys(league, statName) || Object.keys(stats);
+  const hi = hiCols(statName);
+  const keys = wantKeys.filter(k => stats[k] != null && stats[k] !== '' && stats[k] !== '--');
+
+  if (!keys.length) {
+    statsEl.innerHTML = '<div id="no-stats">No live stats yet</div>';
+    ipcRenderer.send('tooltip-height', document.getElementById('card').scrollHeight + 12);
+    return;
+  }
+
+  const hiKeys = keys.filter(k => hi.includes(k));
+  const otherKeys = keys.filter(k => !hi.includes(k));
+
+  let rows = '';
+  if (hiKeys.length) {
+    rows += hiKeys.map(k => {
+      const lbl = STAT_LABELS[k] || k;
+      const val = k === 'PC-ST' ? (stats[k]||'').split('-')[0] : stats[k];
+      return `<div class="srow"><span class="slbl hi">${lbl}</span><span class="sdot"></span><span class="sval hi">${val}</span></div>`;
+    }).join('');
+    if (otherKeys.length) rows += '<div class="sdiv"></div>';
+  }
+  rows += otherKeys.map(k => {
+    const lbl = STAT_LABELS[k] || k;
+    const val = k === 'PC-ST' ? (stats[k]||'').split('-')[0] : stats[k];
+    return `<div class="srow"><span class="slbl">${lbl}</span><span class="sdot"></span><span class="sval">${val}</span></div>`;
+  }).join('');
+
+  statsEl.innerHTML = rows;
+  ipcRenderer.send('tooltip-height', document.getElementById('card').scrollHeight + 12);
+});
+</script>
+</body>
+</html>

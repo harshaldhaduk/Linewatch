@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Dumps decrypted Underdog cookies from Edge to a JSON file."""
-import sqlite3, os, shutil, subprocess, hashlib, json, sys
+import sqlite3, os, shutil, subprocess, hashlib, json, sys, glob
 from Crypto.Cipher import AES
 
 out_file = sys.argv[1] if len(sys.argv) > 1 else '/tmp/ud_cookies.json'
@@ -14,30 +14,58 @@ def get_key():
 
 def decrypt(enc, key):
     try:
-        if enc[:3] == b'v10': enc = enc[3:]
-        else: return None
+        if enc[:3] == b'v10':
+            enc = enc[3:]
+        else:
+            return None
         iv = b' ' * 16
         dec = AES.new(key, AES.MODE_CBC, iv).decrypt(enc)
         pad = dec[-1]
-        if isinstance(pad, int) and 1 <= pad <= 16: dec = dec[:-pad]
+        if isinstance(pad, int) and 1 <= pad <= 16:
+            dec = dec[:-pad]
         for skip in [32, 16, 0]:
             try:
                 s = dec[skip:].decode('utf-8', errors='strict')
-                if all(32 <= ord(c) <= 126 for c in s[:10]): return s
-            except: pass
-    except: pass
+                if all(32 <= ord(c) <= 126 for c in s[:20]):
+                    return s
+            except:
+                pass
+        result = dec.decode('utf-8', errors='ignore')
+        import re
+        m = re.search(r'[ -~]{8,}', result)
+        return m.group(0) if m else None
+    except:
+        pass
     return None
 
+def find_profiles():
+    out = []
+    for name in ['Default'] + [os.path.basename(p) for p in sorted(glob.glob(os.path.join(EDGE_BASE, 'Profile *')))]:
+        path = os.path.join(EDGE_BASE, name)
+        if os.path.exists(path):
+            out.append((name, path))
+    return out
+
 key = get_key()
-db = os.path.join(EDGE_BASE, 'Default', 'Cookies')
-tmp = '/tmp/ud_src.db'
-shutil.copy2(db, tmp)
-conn = sqlite3.connect(tmp)
-rows = conn.execute(
-    "SELECT host_key, name, value, encrypted_value, path, is_secure, is_httponly "
-    "FROM cookies WHERE host_key LIKE '%underdogfantasy%' OR host_key LIKE '%underdogsports%'"
-).fetchall()
-conn.close()
+rows = []
+for profile, profile_path in find_profiles():
+    db = os.path.join(profile_path, 'Cookies')
+    if not os.path.exists(db):
+        continue
+    tmp = f'/tmp/ud_src_{profile.replace(" ", "_")}.db'
+    try:
+        shutil.copy2(db, tmp)
+        conn = sqlite3.connect(tmp)
+        rows.extend(conn.execute(
+            "SELECT host_key, name, value, encrypted_value, path, is_secure, is_httponly "
+            "FROM cookies WHERE host_key LIKE '%underdogfantasy%' OR host_key LIKE '%underdogsports%'"
+        ).fetchall())
+        conn.close()
+    except Exception:
+        pass
+    finally:
+        try: os.unlink(tmp)
+        except: pass
 
 out = []
 for host, name, val, enc, cpath, secure, httponly in rows:

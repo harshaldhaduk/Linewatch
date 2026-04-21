@@ -12,6 +12,7 @@ import hashlib, urllib.parse
 APP_DIR    = os.path.dirname(os.path.abspath(__file__))
 SAVED_FILE = os.path.join(APP_DIR, '.saved_cookies.json')
 COOKIE_FILE= os.path.join(APP_DIR, '.cookie_update')
+UD_AUTH_STATE_FILE = os.path.join(APP_DIR, '.ud_auth_state.json')
 EDGE_BASE  = os.path.expanduser("~/Library/Application Support/Microsoft Edge")
 
 def get_edge_key():
@@ -103,7 +104,7 @@ def find_profiles():
 def main():
     target = int(sys.argv[1]) if len(sys.argv) > 1 else None
     print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    print("  PrizePicks Auto Cookie Extractor")
+    print("  Linewatch Cookie Extractor")
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
 
     key = get_edge_key()
@@ -114,7 +115,7 @@ def main():
             cookie_str, raw = result
             user = get_username(raw)
             found.append((name, cookie_str, user))
-            print(f"  ✓ Edge profile '{name}': {user}")
+            print(f"  ✓ Account {len(found)}: {user}")
 
     if not found:
         print("\n  ❌ No PrizePicks sessions found in Edge.")
@@ -139,7 +140,7 @@ def main():
         saved[target] = cookie_str
         with open(SAVED_FILE,'w') as f: json.dump(saved, f)
         with open(COOKIE_FILE,'w') as f: json.dump({"account":target,"cookie":cookie_str}, f)
-        print(f"  ✅ Account {target} ({user}) updated!\n")
+        print(f"  ✅ PrizePicks cookies synced (account {target}: {user})\n")
     else:
         # Update all
         for i,(_, cookie_str, user) in enumerate(found):
@@ -147,22 +148,47 @@ def main():
             else: saved.append(cookie_str)
         with open(SAVED_FILE,'w') as f: json.dump(saved, f)
         with open(COOKIE_FILE,'w') as f: json.dump({"account":0,"cookie":saved[0]}, f)
-        print(f"  ✅ All {len(found)} account(s) updated!\n")
+        print(f"  ✅ PrizePicks cookies synced ({len(found)} account(s))")
 
-    # Extract Underdog token (always from Default profile = Acc 1)
-    print("  Extracting Underdog Fantasy token...")
-    ud_token, ud_err = extract_underdog(key)
+    ud_token, ud_err, ud_profile = extract_underdog(key)
     if ud_token:
         with open(UD_TOKEN_FILE, 'w') as f:
             json.dump({"token": ud_token}, f)
-        print("  ✓ Underdog token updated\n")
+        write_ud_auth_state(True, f"token synced from {ud_profile}")
+        print(f"  ✅ Underdog token synced ({ud_profile})")
     else:
-        print(f"  ⚠ Underdog: {ud_err} (skipping)\n")
+        if ud_err and ud_err.startswith("Found Underdog refresh cookie"):
+            write_ud_auth_state(True, "refresh cookie found; browser token capture required")
+            print("  ✅ Underdog cookies synced (1 account(s))")
+        elif ud_err and ud_err.startswith("Only leftover Underdog"):
+            write_ud_auth_state(False, ud_err)
+            print(f"  ❌ Underdog logged out: {ud_err}")
+        else:
+            write_ud_auth_state(False, ud_err)
+            print(f"  ❌ Underdog cookies not synced: {ud_err}")
+
+    onyx_token_file = os.path.join(APP_DIR, '.onyx_token.json')
+    try:
+        onyx_data = json.loads(open(onyx_token_file).read())
+        if onyx_data.get('sessionValid'):
+            print("  ✅ Onyx cookies synced (1 account(s))")
+        else:
+            print("  ⚠️  Onyx session invalid – open Linewatch to log in")
+    except:
+        print("  ⚠️  Onyx session not found – open Linewatch to log in")
+    print()
 
 # ── Underdog Fantasy token extraction ────────────────────────────────────────
 import urllib.request, ssl
 
 UD_TOKEN_FILE = os.path.join(APP_DIR, '.ud_token.json')
+
+def write_ud_auth_state(logged_in, reason):
+    try:
+        with open(UD_AUTH_STATE_FILE, 'w') as f:
+            json.dump({"loggedIn": bool(logged_in), "reason": reason or "", "ts": __import__('time').time()}, f)
+    except:
+        pass
 
 def ud_cookies_from_profile(path, key):
     """Extract Underdog session cookies from Edge profile."""
@@ -187,7 +213,11 @@ def ud_cookies_from_profile(path, key):
             d = decrypt(bytes(enc), key)
             if d: c[name] = d
 
-    return c if ('session_refresh' in c or any('dcdd' in k for k in c)) else None
+    if 'session_refresh' in c:
+        return c, 'refresh'
+    if any('dcdd' in k for k in c):
+        return c, 'leftover'
+    return None, None
 
 def ud_refresh_token(cookies):
     """Use session_refresh cookie to get a fresh Bearer token."""
@@ -195,9 +225,9 @@ def ud_refresh_token(cookies):
     if not refresh:
         return None
 
-    # Build cookie string for the token refresh request
-    cookie_str = '; '.join(f'{k}={v}' for k,v in cookies.items()
-                           if 'underdog' in k.lower() or k in ['session_refresh', 'cf_clearance', '__cf_bm', '_cfuvid', 'ud-device-id'])
+    # Send the full Underdog cookie jar. The refresh endpoint has changed which
+    # browser/session cookies it expects a few times.
+    cookie_str = '; '.join(f'{k}={v}' for k,v in cookies.items() if v)
 
     try:
         ctx = ssl._create_unverified_context()
@@ -252,17 +282,26 @@ def ud_refresh_token(cookies):
     return None
 
 def extract_underdog(key):
-    """Extract Underdog token from Default Edge profile."""
-    default_path = os.path.join(EDGE_BASE, 'Default')
-    cookies = ud_cookies_from_profile(default_path, key)
-    if not cookies:
-        return None, "No Underdog session found in Edge Default profile"
+    """Extract an Underdog token from the first Edge profile with a valid session."""
+    saw_refresh_cookie = False
+    saw_leftover_cookie = False
+    for name, path in find_profiles():
+        cookies, state = ud_cookies_from_profile(path, key)
+        if not cookies:
+            continue
+        if state == 'leftover':
+            saw_leftover_cookie = True
+            continue
+        saw_refresh_cookie = True
+        token = ud_refresh_token(cookies)
+        if token:
+            return token, None, name
 
-    token = ud_refresh_token(cookies)
-    if not token:
-        return None, "Failed to refresh Underdog token"
-
-    return token, None
+    if saw_refresh_cookie:
+        return None, "Found Underdog refresh cookie but failed to refresh token", None
+    if saw_leftover_cookie:
+        return None, "Only leftover Underdog browser cookies found; no active login refresh cookie", None
+    return None, "No Underdog session found in any Edge profile", None
 
 if __name__ == '__main__':
     main()

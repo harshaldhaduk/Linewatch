@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linewatch Sheet</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f8fafc;
+    --grid: #d9e2ec;
+    --head: #eef3f8;
+    --text: #172033;
+    --muted: #627386;
+    --green: #15803d;
+    --red: #dc2626;
+    --blue: #2563eb;
+    --yellow: #b45309;
+  }
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
+  }
+  .bar {
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+    background: white;
+    border-bottom: 1px solid var(--grid);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+  .filter-row {
+    height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+    background: white;
+    border-bottom: 1px solid var(--grid);
+    position: sticky;
+    top: 52px;
+    z-index: 4;
+  }
+  .bar.hidden, .filter-row.hidden, .sheet-wrap.hidden { display: none; }
+  .logout {
+    margin-right: 4px;
+  }
+  .title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-right: 8px;
+  }
+  .filters {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 16px;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .filter-select {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex: 0 0 auto;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .filter-select.visibility {
+    margin-left: 45px;
+  }
+  .filter-select select {
+    height: 28px;
+    min-width: 96px;
+    border: 1px solid var(--grid);
+    background: white;
+    color: var(--text);
+    border-radius: 6px;
+    padding: 0 8px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  button {
+    height: 32px;
+    border: 1px solid var(--grid);
+    background: white;
+    color: var(--text);
+    border-radius: 6px;
+    padding: 0 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  button.primary {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: white;
+  }
+  button:disabled {
+    opacity: .6;
+    cursor: default;
+  }
+  .status {
+    margin-left: auto;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  @media (max-width: 980px) {
+    .bar {
+      height: auto;
+      min-height: 52px;
+      flex-wrap: wrap;
+      padding-top: 8px;
+      padding-bottom: 8px;
+    }
+    .filters {
+      width: 100%;
+      max-width: none;
+      justify-content: flex-start;
+    }
+    .sheet-wrap {
+      height: calc(100vh - 96px);
+    }
+  }
+  .sheet-wrap {
+    height: calc(100vh - 96px);
+    overflow: auto;
+    padding-bottom: 0px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+  }
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--head);
+    border: 1px solid var(--grid);
+    height: 32px;
+    text-align: left;
+    padding: 0 8px;
+    font-size: 12px;
+    color: #344256;
+  }
+  tbody td {
+    border: 1px solid var(--grid);
+    height: 34px;
+    padding: 0 8px;
+    vertical-align: middle;
+  }
+  tbody tr:hover td { background: #f6fbff; }
+  tbody tr.hidden-entry td {
+    opacity: .42;
+    background: #f8fafc;
+  }
+  .rownum {
+    width: 46px;
+    text-align: right;
+    color: var(--muted);
+    background: #f4f7fb;
+    font-size: 12px;
+  }
+  .date { width: 112px; white-space: nowrap; }
+  .platform { width: 132px; white-space: nowrap; }
+  .entry { min-width: 420px; padding-top: 7px; padding-bottom: 7px; }
+  .parlay-title { font-weight: 700; margin-bottom: 4px; }
+  .leg-list { display: grid; gap: 2px; color: var(--muted); font-size: 12px; line-height: 1.35; }
+  .leg-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .money { width: 110px; text-align: right; font-variant-numeric: tabular-nums; }
+  .result { width: 92px; white-space: nowrap; }
+  .actions { width: 92px; white-space: nowrap; text-align: center; }
+  .mini-btn {
+    height: 26px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+  .del-btn { color: var(--red); margin-left: 4px; }
+  .pos { color: var(--green); font-weight: 700; }
+  .neg { color: var(--red); font-weight: 700; }
+  .pending { color: var(--yellow); font-weight: 700; }
+  .muted { color: var(--muted); }
+  .logo {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    vertical-align: middle;
+    margin-right: 6px;
+    object-fit: cover;
+    background: #edf2f7;
+  }
+  .empty {
+    padding: 20px;
+    color: var(--muted);
+    text-align: center;
+  }
+  .modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, .45);
+    z-index: 20;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .modal.open { display: flex; }
+  .panel {
+    width: min(980px, 96vw);
+    height: min(620px, 88vh);
+    background: white;
+    border-radius: 8px;
+    border: 1px solid var(--grid);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 22px 70px rgba(15, 23, 42, .28);
+  }
+  .panel-head {
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    border-bottom: 1px solid var(--grid);
+    font-weight: 700;
+  }
+  #chart {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .chart-body {
+    flex: 1;
+    min-height: 0;
+    padding: 12px;
+  }
+  #chart {
+    cursor: crosshair;
+    touch-action: none;
+  }
+  .chart-controls {
+    border-top: 1px solid var(--grid);
+    padding: 10px 14px 12px;
+  }
+  .chart-readout {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .chart-readout strong {
+    color: var(--text);
+    font-size: 14px;
+  }
+  .auth-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: url("./linwatchbg.png") center/cover no-repeat;
+  }
+  .auth-box {
+    position: relative;
+    width: min(380px, calc(100vw - 32px));
+    background: white;
+    border-radius: 8px;
+    padding: 24px 28px 24px;
+    box-shadow: 0 22px 70px rgba(15, 23, 42, .3);
+  }
+  .auth-title {
+    font-size: 24px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .auth-sub {
+    color: var(--muted);
+    margin-bottom: 20px;
+    line-height: 1.45;
+  }
+  .auth-box input {
+    width: 100%;
+    height: 40px;
+    border: 1px solid var(--grid);
+    border-radius: 6px;
+    padding: 0 11px;
+    margin-bottom: 10px;
+    font: inherit;
+  }
+  .auth-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .auth-actions button { flex: 1; }
+  .auth-link {
+    margin-top: 14px;
+    color: var(--muted);
+    font-size: 12px;
+    text-align: center;
+  }
+  .auth-link button {
+    height: auto;
+    border: none;
+    padding: 0;
+    color: var(--blue);
+    font-weight: 700;
+    background: transparent;
+  }
+  .google-btn {
+    width: 100%;
+    margin-top: 10px;
+    background: #fff;
+    border: 1px solid var(--grid);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .google-btn svg { width: 18px; height: 18px; }
+  .auth-error {
+    color: var(--red);
+    font-size: 12px;
+    margin-top: 10px;
+  }
+  .auth-error:empty { display: none; }
+  .entry-form {
+    padding: 14px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .entry-form label {
+    display: grid;
+    gap: 5px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .entry-form input,
+  .entry-form select,
+  .entry-form textarea {
+    width: 100%;
+    border: 1px solid var(--grid);
+    border-radius: 6px;
+    padding: 0 10px;
+    color: var(--text);
+    font: inherit;
+    font-weight: 400;
+    background: white;
+  }
+  .entry-form input,
+  .entry-form select {
+    height: 36px;
+  }
+  .entry-form select {
+    padding-right: 44px;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1 6 6 11 1' fill='none' stroke='%23344256' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 12px 8px;
+  }
+  .entry-form textarea {
+    min-height: 78px;
+    padding-top: 9px;
+    resize: vertical;
+  }
+  .entry-form .wide { grid-column: 1 / -1; }
+  .manual-leg-builder {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 8px;
+  }
+  .manual-leg-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .manual-leg-row {
+    display: grid;
+    grid-template-columns: minmax(150px, 1.4fr) 88px 86px minmax(140px, 1fr) 22px;
+    gap: 8px;
+    align-items: end;
+  }
+  .leg-remove {
+    width: 18px;
+    height: 18px;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 25px;
+    line-height: 1;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: end;
+    margin-bottom: 9px;
+  }
+  .manual-leg-count {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .entry-form-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .auth-screen.hidden { display: none; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <button class="logout" id="logout-btn" onclick="logout()">Logout</button>
+    <div class="title">Linewatch Sheet</div>
+    <button class="primary" id="sync-btn" onclick="syncData(false)">Sync</button>
+    <button onclick="openManualEntry()">Add Entry</button>
+    <button onclick="openChart()">Profit Graph</button>
+    <div class="status" id="status">Not synced</div>
+  </div>
+  <div class="filter-row">
+    <div class="filters" aria-label="Sheet filters">
+      <label class="filter-select">Platform
+        <select data-filter="platform" onchange="setFilter('platform', this.value)">
+          <option value="all">All</option>
+          <option value="prizepicks">PrizePicks</option>
+          <option value="underdog">Underdog</option>
+          <option value="onyx">Onyx</option>
+          <option value="chalkboard">Chalkboard</option>
+        </select>
+      </label>
+      <label class="filter-select">Date
+        <select data-filter="range" onchange="setFilter('range', this.value)">
+          <option value="all">All</option>
+          <option value="7">7D</option>
+          <option value="30">30D</option>
+          <option value="90">90D</option>
+        </select>
+      </label>
+      <label class="filter-select result">Result
+        <select data-filter="result" onchange="setFilter('result', this.value)">
+          <option value="all">All</option>
+          <option value="Won">Won</option>
+          <option value="Lost">Lost</option>
+          <option value="Pending">Pending</option>
+          <option value="Refunded">Refunded</option>
+          <option value="Cancelled">Cancelled</option>
+          <option value="Cashed Out">Cashed Out</option>
+        </select>
+      </label>
+      <label class="filter-select visibility">Visibility
+        <select data-filter="visibility" onchange="setFilter('visibility', this.value)">
+          <option value="all">All</option>
+          <option value="visible">Visible</option>
+          <option value="hidden">Hidden</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div class="auth-screen" id="auth-screen">
+    <div class="auth-box">
+      <div class="auth-title" id="auth-title">Log in</div>
+      <div class="auth-sub" id="auth-sub">Keep your sheet saved. New picks sync into your account without importing old rows again.</div>
+      <input id="auth-user" placeholder="Username or email" autocomplete="username">
+      <input id="auth-pass" placeholder="Password" type="password" autocomplete="current-password">
+      <div class="auth-actions" id="login-actions">
+        <button class="primary" onclick="login()">Log In</button>
+      </div>
+      <button class="google-btn" id="google-login" onclick="loginWithGoogle()">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.1 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.1 6.1 29.3 4 24 4 16.3 4 9.6 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.5-5.2l-6.2-5.2C29.3 35.1 26.8 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.6 5.1C9.4 39.6 16.1 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.1 5.6l6.2 5.2C36.9 39.3 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+        Continue with Google
+      </button>
+      <div class="auth-actions hidden" id="signup-actions">
+        <button class="primary" onclick="createAccount()">Create Account</button>
+      </div>
+      <div class="auth-link" id="auth-switch">No account yet? <button onclick="showSignup()">Sign up</button></div>
+      <div class="auth-error" id="auth-error"></div>
+    </div>
+  </div>
+
+  <div class="sheet-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="rownum">#</th>
+          <th class="date">Date</th>
+          <th class="platform">Platform</th>
+          <th class="entry">Entry</th>
+          <th class="money">In</th>
+          <th class="result">Free Bet</th>
+          <th class="money">Out</th>
+          <th class="money">Profit</th>
+          <th class="result">Result</th>
+          <th class="actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="10" class="empty">Click Sync to load your history from the Linewatch app.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="modal" id="entry-modal" onclick="if(event.target===this)closeManualEntry()">
+    <div class="panel" style="height:auto; max-height:min(620px, 88vh);">
+      <div class="panel-head">
+        <div id="entry-modal-title">Add Entry</div>
+        <button onclick="closeManualEntry()">Close</button>
+      </div>
+      <div class="entry-form">
+        <label>Date
+          <input id="manual-date" type="date">
+        </label>
+        <label>Platform
+          <select id="manual-platform">
+            <option value="prizepicks">PrizePicks</option>
+            <option value="underdog">Underdog</option>
+            <option value="onyx">Onyx</option>
+            <option value="chalkboard">Chalkboard</option>
+          </select>
+        </label>
+        <div class="manual-leg-builder">
+          <div class="manual-leg-head">
+            <span id="manual-leg-title">Single</span>
+            <button class="mini-btn" onclick="addManualLeg()" type="button">Add Leg</button>
+          </div>
+          <div id="manual-legs"></div>
+          <div class="manual-leg-count" id="manual-leg-count">1 leg</div>
+        </div>
+        <label>In
+          <input id="manual-in" inputmode="decimal" placeholder="10.00">
+        </label>
+        <label>Out
+          <input id="manual-out" inputmode="decimal" placeholder="0.00">
+        </label>
+        <label>Result
+          <select id="manual-result">
+            <option value="Won">Won</option>
+            <option value="Lost">Lost</option>
+            <option value="Refunded">Refunded</option>
+            <option value="Cancelled">Cancelled</option>
+            <option value="Cashed Out">Cashed Out</option>
+            <option value="Pending">Pending</option>
+          </select>
+        </label>
+        <label>Free Bet
+          <select id="manual-free">
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select>
+        </label>
+        <div class="entry-form-actions">
+          <button onclick="closeManualEntry()">Cancel</button>
+          <button class="primary" id="entry-save-btn" onclick="addManualEntry()">Add</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="chart-modal" onclick="if(event.target===this)closeChart()">
+    <div class="panel">
+      <div class="panel-head">
+        <div>Profit over time</div>
+        <button onclick="closeChart()">Close</button>
+      </div>
+      <div class="chart-body">
+        <canvas id="chart"></canvas>
+      </div>
+      <div class="chart-controls">
+        <div class="chart-readout">
+          <strong id="chart-profit">$0.00</strong>
+          <span id="chart-detail">No settled entries</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDocs,
+  serverTimestamp,
+  setDoc,
+  deleteDoc,
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import {
+  getAnalytics,
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-analytics.js';
+
+const firebaseConfig = {
+  apiKey: 'AIzaSyCEOSJ2egdyZQfA_FUY6JLoW5xZZUHPAVI',
+  authDomain: 'linewatch-5fbf7.firebaseapp.com',
+  projectId: 'linewatch-5fbf7',
+  storageBucket: 'linewatch-5fbf7.firebasestorage.app',
+  messagingSenderId: '1066271423078',
+  appId: '1:1066271423078:web:881fb0f4c0991b99158ba7',
+  measurementId: 'G-XH635S8HPK',
+};
+
+const firebaseReady = !firebaseConfig.apiKey.startsWith('PASTE_');
+const firebaseApp = firebaseReady ? initializeApp(firebaseConfig) : null;
+const analytics = firebaseReady ? getAnalytics(firebaseApp) : null;
+const auth = firebaseReady ? getAuth(firebaseApp) : null;
+const db = firebaseReady ? getFirestore(firebaseApp) : null;
+const googleProvider = firebaseReady ? new GoogleAuthProvider() : null;
+const API_BASES = [
+  'http://127.0.0.1:37119',
+];
+const LIVE_API = '/api/linewatch?mode=history';
+const PLATFORMS = {
+  prizepicks: { label: 'PrizePicks', logo: 'https://www.google.com/s2/favicons?domain=prizepicks.com&sz=32' },
+  underdog:   { label: 'Underdog',   logo: 'https://www.google.com/s2/favicons?domain=underdogfantasy.com&sz=32' },
+  onyx:       { label: 'Onyx Odds',  logo: 'https://www.google.com/s2/favicons?domain=onyxodds.com&sz=32' },
+  chalkboard: { label: 'Chalkboard', logo: 'https://www.google.com/s2/favicons?domain=chalkboard.io&sz=32' },
+  manual:     { label: 'Manual',     logo: '' },
+};
+const UNDERDOG_FREE_ENTRY_IDS = new Set([
+  '2f81f907-6ab8-4241-a77c-cc67c7292306',
+  '75196603-4839-4b2c-8dda-59f9bc5c262d',
+  'a05cff25-8f23-4e7e-bc9d-1150584b3fd5',
+  'fdedcefc-6ee6-4cb8-92ce-6f0de890fa43',
+  '4128e98d-cc58-4379-8e31-7e5b24e9222d',
+  'd19fff06-38ee-4a4c-bc27-42bcb7407859',
+  '75fef728-0e52-4e09-a01b-6fd7659d5b6d',
+  'fb8cfaad-7400-4c88-afb7-15b8b1424bd2',
+  '3acd739c-9848-43d2-931f-2a58c0d61782',
+  'bd75596f-8b0c-482c-a8f9-d80907a77c70',
+  '56180ee0-7d53-4992-9b28-4404e123ed1b',
+  '16491e0b-2f6d-4b5f-8497-bbacada96071',
+  'cc4b67b0-cd16-4fb6-92cc-7ebe19ee15ff',
+  '59630f5d-12d5-4bbb-bb4f-829be62aa907',
+  '225de4d4-c610-4f50-b49b-89600af985ba',
+  '6fe3f3bf-f0a5-4e56-ad65-ea754121da18',
+]);
+const UNDERDOG_AMOUNT_OVERRIDES = new Map([
+  ['5c30da6f-5469-412a-b868-783ec9590cc9', 10],
+  ['27aca498-3c63-4514-b0a7-a8c28053a2fd', 5],
+  ['640cd6b7-aa5e-4ff7-9b02-26fd944adc7f', 3.06],
+  ['25d3d77d-9aba-4223-ac1e-c914058cd416', 3.54],
+  ['4d96c670-fcbd-42af-b36c-40ebf5d01321', 1],
+  ['ef874b14-69fd-40da-acac-06d5edaffa44', 2],
+]);
+const PRIZEPICKS_FREE_ENTRY_IDS = new Set([
+  '1547044954',
+  '1545889750',
+  '1544028210',
+  '1543835673',
+  '1540192306',
+  '1538155749',
+  '1540189172',
+  '1538778286',
+  '1538007685',
+  '1538188770',
+  '1538188651',
+  '1538187632',
+  '1538186920',
+  '1538185393',
+  '1538183603',
+  '1537086330',
+  '1537800693',
+  '1536603443',
+  '1537048997',
+  '1537867295',
+  '1536702967',
+  '1536697056',
+  '1536691698',
+  '1536688403',
+  '1536679438',
+  '1536595090',
+  '1535861160',
+  '1523303483',
+  '1519102455',
+  '1522491607',
+  '1521544712',
+  '1520004888',
+  '1519024589',
+  '1518306002',
+  '1518681711',
+  '1518059668',
+  '1518054501',
+  '1518277011',
+]);
+const PRIZEPICKS_PROMO_STAKE_OVERRIDES = new Map([
+  ['1521544712', 10],
+  ['1519024589', 10],
+  ['1518681711', 10],
+  ['1518059668', 5],
+]);
+
+let entries = [];
+let currentUser = null;
+let chartSelectedIndex = null;
+let chartDragging = false;
+let manualLegCount = 0;
+let manualEditId = null;
+let filters = {
+  platform: 'all',
+  range: 'all',
+  result: 'all',
+  visibility: 'all',
+};
+
+function slipKey(entry) {
+  if (entry.id) return `${source(entry)}:${entry.id}`;
+  const pickKey = (entry.picks || []).map(p => `${p.name}|${p.statName}|${p.line}|${p.wagerType}`).join(',');
+  return `${source(entry)}:${dateOf(entry)}:${entry.amount}:${entry.payout}:${pickKey}`;
+}
+
+function normalizedEntries() {
+  const byKey = new Map();
+  entries.forEach(entry => {
+    const key = slipKey(entry);
+    if (!byKey.has(key)) byKey.set(key, entry);
+  });
+  return [...byKey.values()];
+}
+
+function setFilter(kind, value) {
+  filters[kind] = value;
+  const control = document.querySelector(`select[data-filter="${kind}"]`);
+  if (control && control.value !== value) control.value = value;
+  renderRows();
+  updateStatusFromRows('Filtered');
+}
+
+function filteredEntries() {
+  const rows = normalizedEntries();
+  const days = filters.range === 'all' ? null : Number(filters.range);
+  const cutoff = days ? new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10) : null;
+  return rows.filter(entry => {
+    if (filters.platform !== 'all' && source(entry) !== filters.platform) return false;
+    if (cutoff && dateOf(entry) < cutoff) return false;
+    if (filters.result !== 'all' && resultOf(entry) !== filters.result) return false;
+    if (filters.visibility === 'visible' && hiddenOf(entry)) return false;
+    if (filters.visibility === 'hidden' && !hiddenOf(entry)) return false;
+    return true;
+  });
+}
+
+function docIdFor(entry) {
+  const raw = slipKey(entry);
+  return btoa(unescape(encodeURIComponent(raw))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '').slice(0, 140);
+}
+
+function userEmail() {
+  const raw = document.getElementById('auth-user').value.trim();
+  if (!raw) return '';
+  return raw.includes('@') ? raw : `${raw}@linewatch.local`;
+}
+
+function authError(message) {
+  document.getElementById('auth-error').textContent = message || '';
+}
+
+function showLogin() {
+  authError('');
+  document.getElementById('auth-title').textContent = 'Log in';
+  document.getElementById('auth-sub').textContent = 'Keep your sheet saved. New picks sync into your account without importing old rows again.';
+  document.getElementById('login-actions').classList.remove('hidden');
+  document.getElementById('signup-actions').classList.add('hidden');
+  document.getElementById('auth-pass').setAttribute('autocomplete', 'current-password');
+  document.getElementById('auth-switch').innerHTML = 'No account yet? <button onclick="showSignup()">Sign up</button>';
+}
+
+function showSignup() {
+  authError('');
+  document.getElementById('auth-title').textContent = 'Create account';
+  document.getElementById('auth-sub').textContent = 'Start a saved Linewatch sheet with your own login.';
+  document.getElementById('login-actions').classList.add('hidden');
+  document.getElementById('signup-actions').classList.remove('hidden');
+  document.getElementById('auth-pass').setAttribute('autocomplete', 'new-password');
+  document.getElementById('auth-switch').innerHTML = 'Already have an account? <button onclick="showLogin()">Log in</button>';
+}
+
+function friendlyAuthError(e) {
+  const code = e?.code || '';
+  if (code === 'auth/configuration-not-found') {
+    return 'Enable Firebase Authentication, then turn on Email/Password sign-in for this project.';
+  }
+  if (code === 'auth/operation-not-allowed') {
+    return 'Email/Password sign-in is disabled in Firebase Authentication.';
+  }
+  if (code === 'auth/unauthorized-domain') {
+    return 'Add this page domain to Firebase Auth authorized domains.';
+  }
+  if (code === 'auth/email-already-in-use') {
+    return 'That username already has an account. Try Log In.';
+  }
+  if (code === 'auth/weak-password') {
+    return 'Password should be at least 6 characters.';
+  }
+  return (e?.message || 'Authentication failed.').replace('Firebase: ', '');
+}
+
+async function login() {
+  if (!firebaseReady) { authError('Paste your Firebase config in website/index.html first.'); return; }
+  try {
+    authError('');
+    await signInWithEmailAndPassword(auth, userEmail(), document.getElementById('auth-pass').value);
+  } catch (e) {
+    authError(friendlyAuthError(e));
+  }
+}
+
+async function createAccount() {
+  if (!firebaseReady) { authError('Paste your Firebase config in website/index.html first.'); return; }
+  try {
+    authError('');
+    await createUserWithEmailAndPassword(auth, userEmail(), document.getElementById('auth-pass').value);
+  } catch (e) {
+    authError(friendlyAuthError(e));
+  }
+}
+
+async function loginWithGoogle() {
+  if (!firebaseReady) { authError('Paste your Firebase config in website/index.html first.'); return; }
+  try {
+    authError('');
+    await signInWithPopup(auth, googleProvider);
+  } catch (e) {
+    authError(friendlyAuthError(e));
+  }
+}
+
+async function logout() {
+  if (auth) await signOut(auth);
+}
+
+window.login = login;
+window.createAccount = createAccount;
+window.loginWithGoogle = loginWithGoogle;
+window.logout = logout;
+window.showLogin = showLogin;
+window.showSignup = showSignup;
+
+function setAuthedUI(isAuthed) {
+  document.getElementById('auth-screen').classList.toggle('hidden', isAuthed);
+  document.querySelector('.bar').classList.toggle('hidden', !isAuthed);
+  document.querySelector('.filter-row').classList.toggle('hidden', !isAuthed);
+  document.querySelector('.sheet-wrap').classList.toggle('hidden', !isAuthed);
+}
+
+function entriesCollection() {
+  return collection(db, 'users', currentUser.uid, 'entries');
+}
+
+async function loadEntriesFromDb() {
+  const snap = await getDocs(entriesCollection());
+  entries = snap.docs.map(d => d.data());
+  renderRows();
+  updateStatusFromRows('Loaded from Firebase');
+}
+
+async function saveEntriesToDb(newEntries) {
+  await Promise.all(newEntries.map(entry => setDoc(doc(entriesCollection(), docIdFor(entry)), {
+    ...entry,
+    slipKey: slipKey(entry),
+    updatedAt: serverTimestamp(),
+  }, { merge: true })));
+}
+
+async function saveEntryToDb(entry) {
+  if (!currentUser) return;
+  await setDoc(doc(entriesCollection(), docIdFor(entry)), {
+    ...entry,
+    slipKey: slipKey(entry),
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+function moneyValue(v) {
+  const n = parseFloat(String(v || '').replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function normalizedSlipId(entry) {
+  return String(entry.id || '').replace(/^(underdog|prizepicks|onyx|chalkboard)-/, '');
+}
+
+function hiddenOf(entry) {
+  return entry.hidden === true || entry.hidden === 'true' || entry.hidden === 'Yes';
+}
+
+function freeBetOf(entry) {
+  if (source(entry) === 'prizepicks' && moneyValue(entry.amount) === 0) return true;
+  if (source(entry) === 'prizepicks' && PRIZEPICKS_FREE_ENTRY_IDS.has(normalizedSlipId(entry))) return true;
+  if (source(entry) === 'prizepicks' && (entry.promoTag || entry.f2p)) return true;
+  if (entry.freeBet === true || entry.freeBet === 'true' || entry.freeBet === 'Yes') return true;
+  if (source(entry) === 'underdog' && UNDERDOG_FREE_ENTRY_IDS.has(normalizedSlipId(entry))) return true;
+  const raw = `${entry.powerUpType || ''} ${entry.powerUpTitle || ''} ${entry.powerUpTag || ''}`.toLowerCase();
+  return source(entry) === 'underdog' && /bonus_entry|bonus entry|free entry|gimme/.test(raw) && !/\bboost\b/.test(raw);
+}
+
+function inOf(entry) {
+  if (freeBetOf(entry)) return 0;
+  const id = normalizedSlipId(entry);
+  if (source(entry) === 'underdog' && UNDERDOG_AMOUNT_OVERRIDES.has(id)) {
+    return UNDERDOG_AMOUNT_OVERRIDES.get(id);
+  }
+  return moneyValue(entry.amount);
+}
+
+function source(entry) {
+  return entry.source || 'prizepicks';
+}
+
+function dateOf(entry) {
+  return entry.date || new Date().toISOString().slice(0, 10);
+}
+
+function resultOf(entry) {
+  const inAmt = inOf(entry);
+  const hasOut = entry.actualPayout != null && String(entry.actualPayout).trim() !== '';
+  const actualOut = moneyValue(hasOut ? entry.actualPayout : entry.payout);
+  const raw = `${entry.result || ''} ${entry.status || ''} ${entry.displayResult || ''} ${entry.settledMessage || ''}`.toLowerCase();
+
+  if (raw.includes('cancel')) return 'Cancelled';
+  if (raw.includes('cash')) return 'Cashed Out';
+  if (raw.includes('refund') || raw.includes('void') || raw.includes('reboot')) return 'Refunded';
+  if (raw.includes('partial_win')) return actualOut > inAmt ? 'Won' : 'Lost';
+  if (/\b(won|win)\b/.test(raw)) return 'Won';
+  if (/\b(lost|loss)\b/.test(raw)) return 'Lost';
+  // Only treat actualOut === inAmt as a refund when there's a real stake (inAmt > 0).
+  // Free bets have inAmt = 0 and actualOut = 0, so $0 = $0 must not be treated as a push.
+  if (source(entry) === 'prizepicks' && hasOut && inAmt > 0 && actualOut === inAmt) return 'Refunded';
+
+  if (hasOut) {
+    if (actualOut > inAmt) return 'Won';
+    if (inAmt > 0 && actualOut === inAmt) return 'Refunded';
+    if (actualOut < inAmt) return 'Lost';
+  }
+
+  const settled = raw.includes('settled') || raw.includes('paid') || raw.includes('won') || raw.includes('lost') ||
+    raw.includes('refund') || raw.includes('void') || raw.includes('reboot') || raw.includes('cancel');
+  if (settled) {
+    if (inAmt > 0 && actualOut === inAmt) return 'Refunded';
+    if (actualOut > inAmt) return 'Won';
+    if (actualOut < inAmt) return 'Lost';
+  }
+  if ((entry.open || 0) > 0) return 'Pending';
+  if ((entry.lost || 0) > 0) return 'Lost';
+  if ((entry.won || 0) > 0) return 'Won';
+  return 'Refunded';
+}
+
+function outOf(entry) {
+  const result = resultOf(entry);
+  const hasActual = entry.actualPayout != null && String(entry.actualPayout).trim() !== '';
+  const actual = hasActual ? moneyValue(entry.actualPayout) : null;
+  const payout = moneyValue(entry.payout);
+  const promoStake = source(entry) === 'prizepicks'
+    ? (moneyValue(entry.hiddenPromoStake) || PRIZEPICKS_PROMO_STAKE_OVERRIDES.get(normalizedSlipId(entry)) || 0)
+    : 0;
+  if (result === 'Pending') return null;
+  if (result === 'Lost') return hasActual && actual > 0 ? actual : 0;
+  if (result === 'Cancelled') return inOf(entry);
+  if (result === 'Cashed Out') {
+    if (hasActual) return promoStake > 0 && actual > 0 && actual <= payout ? actual + promoStake : actual;
+    return payout;
+  }
+  if (result === 'Refunded') return inOf(entry);
+  if (hasActual) {
+    if (promoStake > 0 && actual > 0 && actual <= payout) return actual + promoStake;
+    if (source(entry) === 'prizepicks' && payout > 0 && actual > payout) return payout;
+    if (result === 'Won' && actual === 0 && payout > 0) return payout;
+    return actual;
+  }
+  return payout;
+}
+
+function profitOf(entry) {
+  const out = outOf(entry);
+  if (out == null) return null;
+  return out - inOf(entry);
+}
+
+function legText(p) {
+  const dir = p.wagerType === 'under' ? 'Under' : 'Over';
+  const line = p.line != null ? p.line : '';
+  const stat = p.statName || '';
+  const statLower = stat.toLowerCase();
+  const lineNum = line === '' ? null : Number(line);
+  const isGameWinner = /game winner|winner|moneyline|\bml\b|to win|win/.test(statLower);
+  if (isGameWinner && lineNum === 0) {
+    return `${p.name || 'Pick'} · ${stat}`.trim();
+  }
+  return `${p.name || 'Pick'} · ${dir} ${line} ${stat}`.trim();
+}
+
+function entryHtml(entry) {
+  if (entry.manualText) {
+    const lines = String(entry.manualText).split(/\n+/).map(line => line.trim()).filter(Boolean);
+    if (!lines.length) return 'Manual entry';
+    return `<div class="parlay-title">${escapeHtml(lines[0])}</div><div class="leg-list">${
+      lines.slice(1).map(line => `<div class="leg-line">${escapeHtml(line)}</div>`).join('')
+    }</div>`;
+  }
+  const picks = entry.picks || [];
+  if (!picks.length) return 'Entry';
+  const title = picks.length === 1 ? 'Single' : `${picks.length}-leg parlay`;
+  return `<div class="parlay-title">${title}</div><div class="leg-list">${
+    picks.map((p, i) => `<div class="leg-line">${i + 1}. ${escapeHtml(legText(p))}</div>`).join('')
+  }</div>`;
+}
+
+function fmtMoney(v) {
+  if (v == null) return '';
+  const sign = v < 0 ? '-' : '';
+  return `${sign}$${Math.abs(v).toFixed(2)}`;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+function setManualModalMode(mode) {
+  document.getElementById('entry-modal-title').textContent = mode === 'edit' ? 'Edit Entry' : 'Add Entry';
+  document.getElementById('entry-save-btn').textContent = mode === 'edit' ? 'Save' : 'Add';
+}
+
+function openManualEntry() {
+  manualEditId = null;
+  setManualModalMode('add');
+  document.getElementById('manual-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('manual-platform').value = filters.platform === 'all' ? 'prizepicks' : filters.platform;
+  document.getElementById('manual-in').value = '';
+  document.getElementById('manual-out').value = '';
+  document.getElementById('manual-result').value = 'Lost';
+  document.getElementById('manual-free').value = 'false';
+  manualLegCount = 0;
+  document.getElementById('manual-legs').innerHTML = '';
+  addManualLeg();
+  document.getElementById('entry-modal').classList.add('open');
+}
+
+function openEditEntry(encodedKey) {
+  const key = decodeURIComponent(encodedKey);
+  const entry = entries.find(item => slipKey(item) === key);
+  if (!entry) return;
+  manualEditId = entry.id;
+  setManualModalMode('edit');
+  document.getElementById('manual-date').value = dateOf(entry);
+  document.getElementById('manual-platform').value = source(entry) || 'prizepicks';
+  const baseIn = moneyValue(entry.originalAmount || entry.amount);
+  const baseOut = moneyValue(entry.actualPayout || entry.payout);
+  document.getElementById('manual-in').value = baseIn ? baseIn.toFixed(2) : '';
+  document.getElementById('manual-out').value = baseOut ? baseOut.toFixed(2) : '';
+  document.getElementById('manual-result').value = resultOf(entry);
+  document.getElementById('manual-free').value = freeBetOf(entry) ? 'true' : 'false';
+
+  manualLegCount = 0;
+  document.getElementById('manual-legs').innerHTML = '';
+  const picks = entry.picks && entry.picks.length ? entry.picks : [{ name: 'Pick', statName: 'Metric', line: '', wagerType: 'over' }];
+  picks.forEach(p => {
+    addManualLeg();
+    const rows = document.querySelectorAll('.manual-leg-row');
+    const row = rows[rows.length - 1];
+    row.querySelector('.manual-leg-name').value = p.name || '';
+    row.querySelector('.manual-leg-side').value = p.wagerType || 'over';
+    row.querySelector('.manual-leg-line').value = p.line === '' || p.line == null ? '' : p.line;
+    row.querySelector('.manual-leg-metric').value = p.statName || '';
+  });
+
+  updateManualLegSummary();
+  document.getElementById('entry-modal').classList.add('open');
+}
+
+function closeManualEntry() {
+  document.getElementById('entry-modal').classList.remove('open');
+}
+
+function addManualLeg() {
+  manualLegCount += 1;
+  const row = document.createElement('div');
+  row.className = 'manual-leg-row';
+  row.innerHTML = `
+    <label>Name
+      <input class="manual-leg-name" placeholder="Player or team">
+    </label>
+    <label>Pick
+      <select class="manual-leg-side">
+        <option value="over">Over</option>
+        <option value="under">Under</option>
+      </select>
+    </label>
+    <label>Line
+      <input class="manual-leg-line" inputmode="decimal" placeholder="10.5">
+    </label>
+    <label>Metric
+      <input class="manual-leg-metric" placeholder="Points">
+    </label>
+    <button class="leg-remove" type="button" onclick="removeManualLeg(this)" aria-label="Remove leg">⊖</button>
+  `;
+  document.getElementById('manual-legs').appendChild(row);
+  updateManualLegSummary();
+}
+
+function removeManualLeg(button) {
+  const rows = document.querySelectorAll('.manual-leg-row');
+  if (rows.length <= 1) return;
+  button.closest('.manual-leg-row').remove();
+  updateManualLegSummary();
+}
+
+function updateManualLegSummary() {
+  const count = document.querySelectorAll('.manual-leg-row').length;
+  document.getElementById('manual-leg-title').textContent = count === 1 ? 'Single' : `${count}-leg parlay`;
+  document.getElementById('manual-leg-count').textContent = `${count} ${count === 1 ? 'leg' : 'legs'}`;
+}
+
+function manualPicks() {
+  return [...document.querySelectorAll('.manual-leg-row')].map((row, index) => {
+    const name = row.querySelector('.manual-leg-name').value.trim() || `Leg ${index + 1}`;
+    const statName = row.querySelector('.manual-leg-metric').value.trim() || 'Metric';
+    const lineRaw = row.querySelector('.manual-leg-line').value.trim();
+    const line = lineRaw === '' ? '' : moneyValue(lineRaw);
+    const wagerType = row.querySelector('.manual-leg-side').value;
+    return {
+      name,
+      pos: '',
+      league: '',
+      imgUrl: '',
+      statName,
+      line,
+      wagerType,
+      oddsType: '',
+      current: null,
+      inGame: false,
+      gameFinished: false,
+      result: 'pending',
+      clock: '',
+      period: '',
+      punit: '',
+      awayAbb: '',
+      homeAbb: '',
+      awaySc: '',
+      homeSc: '',
+      startTime: '',
+      source: 'manual',
+    };
+  });
+}
+
+async function addManualEntry() {
+  const date = document.getElementById('manual-date').value || new Date().toISOString().slice(0, 10);
+  const platform = document.getElementById('manual-platform').value;
+  const picks = manualPicks();
+  const amount = moneyValue(document.getElementById('manual-in').value);
+  const out = moneyValue(document.getElementById('manual-out').value);
+  const result = document.getElementById('manual-result').value;
+  const freeBet = document.getElementById('manual-free').value === 'true';
+  const entry = {
+    id: manualEditId || `manual-${Date.now()}`,
+    date,
+    amount: `$${(freeBet ? 0 : amount).toFixed(2)}`,
+    originalAmount: `$${amount.toFixed(2)}`,
+    payout: `$${out.toFixed(2)}`,
+    actualPayout: result === 'Pending' ? '' : `$${out.toFixed(2)}`,
+    status: result === 'Pending' ? 'pending' : 'settled',
+    result,
+    displayResult: result,
+    settledMessage: '',
+    freeBet,
+    manual: true,
+    picks,
+    won: result === 'Won' ? 1 : 0,
+    lost: result === 'Lost' ? 1 : 0,
+    open: result === 'Pending' ? 1 : 0,
+    source: platform,
+  };
+  if (manualEditId) {
+    const idx = entries.findIndex(item => item.id === manualEditId);
+    if (idx >= 0) {
+      entry.hidden = entries[idx].hidden;
+      entries[idx] = entry;
+    } else {
+      entries = [entry, ...entries];
+    }
+  } else {
+    entries = [entry, ...entries];
+  }
+  manualEditId = null;
+  closeManualEntry();
+  renderRows();
+  updateStatusFromRows(entry.id.startsWith('manual-') ? 'Saved manual entry' : 'Updated manual entry');
+  try {
+    await saveEntryToDb(entry);
+    updateStatusFromRows('Saved manual entry');
+  } catch (e) {
+    updateStatusFromRows('Added manual entry · Firebase save failed');
+    console.warn('Manual entry save failed', e);
+  }
+}
+
+async function deleteEntry(encodedKey) {
+  const key = decodeURIComponent(encodedKey);
+  const idx = entries.findIndex(item => slipKey(item) === key);
+  if (idx === -1) return;
+  const entry = entries[idx];
+  entries.splice(idx, 1);
+  renderRows();
+  updateStatusFromRows('Entry deleted');
+  if (currentUser && db) {
+    try {
+      await deleteDoc(doc(entriesCollection(), docIdFor(entry)));
+    } catch (e) {
+      console.warn('Delete from Firebase failed', e);
+    }
+  }
+}
+
+async function toggleHidden(encodedKey) {
+  const key = decodeURIComponent(encodedKey);
+  const entry = entries.find(item => slipKey(item) === key);
+  if (!entry) return;
+  entry.hidden = !hiddenOf(entry);
+  renderRows();
+  updateStatusFromRows(entry.hidden ? 'Entry hidden' : 'Entry visible');
+  try {
+    await saveEntryToDb(entry);
+  } catch (e) {
+    updateStatusFromRows('Visibility changed · Firebase save failed');
+    console.warn('Visibility save failed', e);
+  }
+}
+
+async function syncData(force) {
+  const btn = document.getElementById('sync-btn');
+  const status = document.getElementById('status');
+  if (!currentUser) return;
+  btn.disabled = true;
+  btn.textContent = 'Syncing';
+  status.textContent = 'Syncing full history...';
+  try {
+    const data = await fetchLinewatch(LIVE_API, force);
+    const incoming = Array.isArray(data.entries) ? data.entries : [];
+    const byKey = new Map(entries.map(entry => [slipKey(entry), entry]));
+    incoming.forEach(entry => {
+      const key = slipKey(entry);
+      const existing = byKey.get(key);
+      byKey.set(key, existing ? { ...entry, hidden: existing.hidden } : entry);
+    });
+    entries = [...byKey.values()];
+    renderRows();
+    updateStatusFromRows(`Fetched ${incoming.length} historical slips`);
+    try {
+      await saveEntriesToDb(incoming);
+      updateStatusFromRows(`Synced ${incoming.length} historical slips`);
+    } catch (saveError) {
+      updateStatusFromRows(`Fetched ${incoming.length} historical slips · Firebase save failed`);
+      console.warn('Firebase save failed', saveError);
+    }
+  } catch (e) {
+    status.textContent = `Sync failed: ${e.message || 'Linewatch API unavailable'}`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sync';
+  }
+}
+
+async function fetchLinewatch(path, force) {
+  let lastError = null;
+  for (const base of API_BASES) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 60000);
+      const res = await fetch(`${base}${path}${force ? '&refresh=1' : ''}`, {
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError || new Error('Linewatch API unavailable');
+}
+
+function updateStatusFromRows(prefix) {
+  const allRows = normalizedEntries();
+  const rows = filteredEntries();
+  const visibleRows = rows.filter(e => !hiddenOf(e));
+  const settled = visibleRows.filter(e => profitOf(e) != null);
+  const totalProfit = settled.reduce((s, e) => s + profitOf(e), 0);
+  const legs = visibleRows.reduce((s, e) => s + ((e.picks || []).length), 0);
+  const shown = rows.length === allRows.length ? `${rows.length} slips` : `${rows.length} of ${allRows.length} slips`;
+  document.getElementById('status').textContent = `${prefix} · ${shown} · ${legs} legs · ${fmtMoney(totalProfit)} profit`;
+}
+
+window.syncData = syncData;
+window.openChart = openChart;
+window.closeChart = closeChart;
+window.setFilter = setFilter;
+window.drawChart = drawChart;
+window.openManualEntry = openManualEntry;
+window.closeManualEntry = closeManualEntry;
+window.addManualEntry = addManualEntry;
+window.addManualLeg = addManualLeg;
+window.removeManualLeg = removeManualLeg;
+window.toggleHidden = toggleHidden;
+window.deleteEntry = deleteEntry;
+window.openEditEntry = openEditEntry;
+
+function renderRows() {
+  const body = document.getElementById('rows');
+  const sorted = filteredEntries().sort((a, b) => dateOf(b).localeCompare(dateOf(a)));
+  if (!sorted.length) {
+    const message = normalizedEntries().length ? 'No entries match those filters.' : 'No synced entries yet.';
+    body.innerHTML = `<tr><td colspan="10" class="empty">${message}</td></tr>`;
+    return;
+  }
+  body.innerHTML = sorted.map((entry, idx) => {
+    const p = PLATFORMS[source(entry)] || PLATFORMS.prizepicks;
+    const result = resultOf(entry);
+    const out = outOf(entry);
+    const profit = profitOf(entry);
+    const profitClass = profit == null ? 'pending' : profit > 0 ? 'pos' : profit < 0 ? 'neg' : 'muted';
+    const resultClass = result === 'Won' ? 'pos' : result === 'Lost' ? 'neg' : result === 'Pending' || result === 'Refunded' || result === 'Cancelled' || result === 'Cashed Out' ? 'pending' : 'muted';
+    const key = encodeURIComponent(slipKey(entry));
+    return `<tr class="${hiddenOf(entry) ? 'hidden-entry' : ''}">
+      <td class="rownum">${idx + 1}</td>
+      <td class="date">${escapeHtml(dateOf(entry))}</td>
+      <td class="platform"><img class="logo" src="${p.logo}" onerror="this.style.display='none'">${p.label}</td>
+      <td class="entry">${entryHtml(entry)}</td>
+      <td class="money">${fmtMoney(inOf(entry))}</td>
+      <td class="result ${freeBetOf(entry) ? 'pending' : 'muted'}">${freeBetOf(entry) ? 'Yes' : 'No'}</td>
+      <td class="money">${fmtMoney(out)}</td>
+      <td class="money ${profitClass}">${fmtMoney(profit)}</td>
+      <td class="result ${resultClass}">${result}</td>
+      <td class="actions"><button class="mini-btn" onclick="toggleHidden('${key}')">${hiddenOf(entry) ? 'Unhide' : 'Hide'}</button>${entry.manual || String(entry.id || '').startsWith('manual-') ? `<button class="mini-btn" onclick="openEditEntry('${key}')">Edit</button>` : ''}<button class="mini-btn del-btn" onclick="if(confirm('Delete this entry?'))deleteEntry('${key}')">Del</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function graphPoints() {
+  const rows = filteredEntries()
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => !hiddenOf(entry) && profitOf(entry) != null)
+    .sort((a, b) => {
+      const dateCompare = dateOf(a.entry).localeCompare(dateOf(b.entry));
+      return dateCompare || a.index - b.index;
+    });
+  let total = 0;
+  return rows.map(({ entry }, index) => {
+    const profit = profitOf(entry);
+    total += profit;
+    return {
+      date: dateOf(entry),
+      value: total,
+      profit,
+      entry,
+      number: index + 1,
+    };
+  });
+}
+
+function openChart() {
+  document.getElementById('chart-modal').classList.add('open');
+  const pointCount = graphPoints().length;
+  chartSelectedIndex = Math.max(0, pointCount - 1);
+  requestAnimationFrame(drawChart);
+}
+
+function closeChart() {
+  document.getElementById('chart-modal').classList.remove('open');
+}
+
+function drawChart() {
+  const canvas = document.getElementById('chart');
+  const profitLabel = document.getElementById('chart-profit');
+  const detailLabel = document.getElementById('chart-detail');
+  const box = canvas.parentElement.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.floor(box.width * dpr));
+  canvas.height = Math.max(1, Math.floor(box.height * dpr));
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const W = box.width;
+  const H = box.height;
+  ctx.clearRect(0, 0, W, H);
+  const pts = graphPoints();
+  const pad = { l: 58, r: 24, t: 24, b: 44 };
+  const cw = W - pad.l - pad.r;
+  const ch = H - pad.t - pad.b;
+
+  ctx.strokeStyle = '#d9e2ec';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad.l, pad.t);
+  ctx.lineTo(pad.l, H - pad.b);
+  ctx.lineTo(W - pad.r, H - pad.b);
+  ctx.stroke();
+
+  if (!pts.length) {
+    chartSelectedIndex = null;
+    profitLabel.textContent = fmtMoney(0);
+    detailLabel.textContent = 'No settled entries';
+    ctx.fillStyle = '#627386';
+    ctx.font = '14px Arial';
+    ctx.fillText('No settled entries to graph.', pad.l + 12, pad.t + 28);
+    return;
+  }
+  if (chartSelectedIndex == null) chartSelectedIndex = pts.length - 1;
+  const selectedIndex = Math.max(0, Math.min(pts.length - 1, chartSelectedIndex));
+  chartSelectedIndex = selectedIndex;
+  const selected = pts[selectedIndex];
+
+  const values = pts.map(p => p.value);
+  const min = Math.min(0, ...values);
+  const max = Math.max(0, ...values);
+  const range = max - min || 1;
+  const x = i => pad.l + (pts.length === 1 ? 0 : i / (pts.length - 1)) * cw;
+  const y = v => pad.t + ch - ((v - min) / range) * ch;
+
+  const zeroY = y(0);
+  ctx.strokeStyle = '#eef3f8';
+  ctx.beginPath();
+  ctx.moveTo(pad.l, zeroY);
+  ctx.lineTo(W - pad.r, zeroY);
+  ctx.stroke();
+
+  const segments = [];
+  let current = { sign: pts[0].value >= 0 ? 'pos' : 'neg', points: [{ x: x(0), y: y(pts[0].value) }] };
+  for (let i = 1; i < pts.length; i += 1) {
+    const prev = pts[i - 1];
+    const curr = pts[i];
+    const prevVal = prev.value;
+    const currVal = curr.value;
+    const prevPos = prevVal >= 0;
+    const currPos = currVal >= 0;
+    const x0 = x(i - 1);
+    const x1 = x(i);
+    const y0 = y(prevVal);
+    const y1 = y(currVal);
+
+    if (prevPos === currPos) {
+      current.points.push({ x: x1, y: y1 });
+    } else {
+      const t = prevVal === currVal ? 0.5 : (0 - prevVal) / (currVal - prevVal);
+      const xi = x0 + (x1 - x0) * t;
+      const yi = y(0);
+      current.points.push({ x: xi, y: yi });
+      segments.push(current);
+      current = { sign: currPos ? 'pos' : 'neg', points: [{ x: xi, y: yi }, { x: x1, y: y1 }] };
+    }
+  }
+  segments.push(current);
+
+  segments.forEach(seg => {
+    if (seg.points.length < 2) return;
+    const isPos = seg.sign === 'pos';
+    const grad = ctx.createLinearGradient(0, zeroY, 0, isPos ? pad.t : H - pad.b);
+    if (isPos) {
+      grad.addColorStop(0, 'rgba(21, 128, 61, 0.06)');
+      grad.addColorStop(1, 'rgba(21, 128, 61, 0.2)');
+    } else {
+      grad.addColorStop(0, 'rgba(220, 38, 38, 0.06)');
+      grad.addColorStop(1, 'rgba(220, 38, 38, 0.2)');
+    }
+    ctx.beginPath();
+    ctx.moveTo(seg.points[0].x, seg.points[0].y);
+    seg.points.slice(1).forEach(pt => ctx.lineTo(pt.x, pt.y));
+    ctx.lineTo(seg.points[seg.points.length - 1].x, zeroY);
+    ctx.lineTo(seg.points[0].x, zeroY);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+  });
+
+  ctx.lineWidth = 2.5;
+  segments.forEach(seg => {
+    if (seg.points.length < 2) return;
+    ctx.strokeStyle = seg.sign === 'pos' ? '#15803d' : '#dc2626';
+    ctx.beginPath();
+    ctx.moveTo(seg.points[0].x, seg.points[0].y);
+    seg.points.slice(1).forEach(pt => ctx.lineTo(pt.x, pt.y));
+    ctx.stroke();
+  });
+
+  const selectedX = x(selectedIndex);
+  const selectedY = y(selected.value);
+  ctx.strokeStyle = '#172033';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(selectedX, pad.t);
+  ctx.lineTo(selectedX, H - pad.b);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(21, 128, 61, .18)';
+  ctx.beginPath();
+  ctx.arc(selectedX, selectedY, 9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(21, 128, 61, .35)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = '#15803d';
+  ctx.beginPath();
+  ctx.arc(selectedX, selectedY, 4, 0, Math.PI * 2);
+  ctx.fill();
+  const tooltip = fmtMoney(selected.value);
+  ctx.font = 'bold 13px Arial';
+  const tooltipWidth = ctx.measureText(tooltip).width + 14;
+  const tooltipX = Math.max(pad.l, Math.min(W - pad.r - tooltipWidth, selectedX + 8));
+  const tooltipY = Math.max(pad.t + 6, selectedY - 30);
+  ctx.fillStyle = 'rgba(255, 255, 255, .95)';
+  ctx.strokeStyle = '#d9e2ec';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(tooltipX, tooltipY, tooltipWidth, 24, 6);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = selected.value >= 0 ? '#15803d' : '#dc2626';
+  ctx.fillText(tooltip, tooltipX + 7, tooltipY + 16);
+
+  ctx.fillStyle = '#172033';
+  ctx.font = '12px Arial';
+  ctx.fillText(fmtMoney(max), 8, y(max) + 4);
+  ctx.fillText(fmtMoney(min), 8, y(min) + 4);
+  ctx.fillText(pts[0].date, pad.l, H - 16);
+  ctx.textAlign = 'right';
+  ctx.fillText(pts.at(-1).date, W - pad.r, H - 16);
+  ctx.textAlign = 'left';
+
+  const last = pts.at(-1);
+  const isPositive = values.at(-1) >= 0;
+  ctx.fillStyle = isPositive ? '#15803d' : '#dc2626';
+  ctx.beginPath();
+  ctx.arc(x(pts.length - 1), y(last.value), 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.font = 'bold 13px Arial';
+  ctx.fillText(fmtMoney(last.value), Math.min(W - 90, x(pts.length - 1) + 8), y(last.value) - 8);
+
+  profitLabel.textContent = fmtMoney(selected.value);
+  const platform = PLATFORMS[source(selected.entry)]?.label || 'Entry';
+  detailLabel.textContent = `${selected.number} of ${pts.length} · ${selected.date} · ${platform} · Last Bet Profit: ${fmtMoney(selected.profit)}`;
+}
+
+function scrubChart(event) {
+  const canvas = document.getElementById('chart');
+  const pts = graphPoints();
+  if (!pts.length) return;
+  const rect = canvas.getBoundingClientRect();
+  const pad = { l: 58, r: 24 };
+  const cw = Math.max(1, rect.width - pad.l - pad.r);
+  const pos = Math.max(0, Math.min(1, (event.clientX - rect.left - pad.l) / cw));
+  chartSelectedIndex = Math.round(pos * (pts.length - 1));
+  drawChart();
+}
+
+const chartCanvas = document.getElementById('chart');
+chartCanvas.addEventListener('pointerdown', event => {
+  chartDragging = true;
+  chartCanvas.setPointerCapture(event.pointerId);
+  scrubChart(event);
+});
+chartCanvas.addEventListener('pointermove', event => {
+  if (chartDragging) scrubChart(event);
+});
+chartCanvas.addEventListener('pointerup', event => {
+  chartDragging = false;
+  chartCanvas.releasePointerCapture(event.pointerId);
+});
+chartCanvas.addEventListener('pointercancel', () => {
+  chartDragging = false;
+});
+
+window.addEventListener('resize', () => {
+  if (document.getElementById('chart-modal').classList.contains('open')) drawChart();
+});
+
+if (firebaseReady) {
+  onAuthStateChanged(auth, async user => {
+    currentUser = user;
+    setAuthedUI(!!user);
+    if (user) await loadEntriesFromDb();
+  });
+} else {
+  setAuthedUI(false);
+  authError('Paste your Firebase config in website/index.html to enable login.');
+}
+</script>
+</body>
+</html>

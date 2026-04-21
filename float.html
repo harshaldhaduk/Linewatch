@@ -155,20 +155,20 @@
     font-size: 17px; flex-shrink: 0;
   }
   .av-teams {
-    width: 40px; height: 40px; border-radius: 50%;
+    width: 46px; height: 46px; border-radius: 50%;
     background: var(--bg3); border: 2px solid var(--border);
     display: flex; align-items: center; justify-content: center;
-    gap: 2px; padding: 6px; overflow: hidden; flex-shrink: 0;
+    gap: 2px; padding: 8px; overflow: hidden; flex-shrink: 0;
   }
   .av-teams img { flex: 1; height: 100%; object-fit: contain; }
   .av-teams.won-r  { border-color: var(--green); box-shadow: 0 0 7px #22c55e55; }
   .av-teams.lost-r { border-color: var(--red);   box-shadow: 0 0 7px #ef444455; }
   .av-teams.live-r { border-color: #fff; animation: live-pulse 1.4s ease-in-out infinite; }
   .av-logo {
-    width: 40px; height: 40px; border-radius: 50%;
+    width: 46px; height: 46px; border-radius: 50%;
     background: var(--bg3); border: 2px solid var(--border);
     display: flex; align-items: center; justify-content: center;
-    padding: 6px; overflow: hidden; flex-shrink: 0;
+    padding: 8px; overflow: hidden; flex-shrink: 0;
   }
   .av-logo img { width: 100%; height: 100%; object-fit: contain; }
   .av-logo.won-r  { border-color: var(--green); box-shadow: 0 0 7px #22c55e55; }
@@ -180,6 +180,7 @@
   .pname { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pbadge { font-size: 8px; font-weight: 600; color: var(--sub); background: var(--bg3); padding: 1px 3px; border-radius: 3px; flex-shrink: 0; }
   .out-badge { font-size: 8px; font-weight: 700; color: var(--red); padding: 1px 3px; border-radius: 3px; border: 1px solid var(--red)66; flex-shrink: 0; }
+  .event-badge { font-size: 8px; font-weight: 800; color: rgba(255,255,255,0.55); background: #f8717133; border: 1px solid #f8717155; padding: 1px 4px; border-radius: 3px; flex-shrink: 0; }
   .game-row { font-size: 9px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
   .league-tag { background: var(--bg3); padding: 1px 3px; border-radius: 3px; font-weight: 600; margin-right: 2px; }
   .live-tag { color: var(--gold); font-weight: 600; }
@@ -249,6 +250,16 @@
 <script>
 const { ipcRenderer } = require('electron');
 
+let _psIdx = 0;
+window._PS = {};
+
+function showTip(el, idx) {
+  const d = (window._PS||{})[idx];
+  if (!d || !d.stats || !Object.keys(d.stats).length) return;
+  ipcRenderer.send('show-tooltip', d);
+}
+function hideTip() { ipcRenderer.send('hide-tooltip'); }
+
 function closeFloat() { ipcRenderer.send('toggle-float'); }
 
 function openPick(encoded) {
@@ -271,7 +282,7 @@ function openPick(encoded) {
     const query = encodeURIComponent(`${searchTeams} ${mon} ${dd} gosugamers`);
     shell.openExternal(`https://www.google.com/search?q=${query}`);
   } else {
-    const query = encodeURIComponent(`${teams} ${mon} ${dd} espn`);
+    const query = encodeURIComponent(`${teams} ${mon} ${dd} espn gamecast`);
     shell.openExternal(`https://www.google.com/search?q=${query}&btnI=1`);
   }
 }
@@ -317,6 +328,7 @@ ipcRenderer.on('picks-data', (_, { entries, error, accounts, activeAccount }) =>
 });
 
 function render(entries, error) {
+  _psIdx = 0; window._PS = {};
   const body = document.getElementById('body');
   const wlEl = document.getElementById('wl');
   const dotsEl = document.getElementById('header-dots');
@@ -360,6 +372,8 @@ function render(entries, error) {
 }
 
 function pickHtml(p) {
+  const _tipIdx = _psIdx++;
+  if (p.espnStats && Object.keys(p.espnStats).length) window._PS[_tipIdx] = { stats: p.espnStats, league: p.league, statName: p.statName, name: p.name, pos: p.pos, imgUrl: p.imgUrl, teamAbb: p.teamAbb || p.homeAbb || '', lg: (p.league||'').toLowerCase() };
   const isWon  = ['won','correct','win'].includes(p.result);
   const isLost = ['lost','incorrect','loss'].includes(p.result);
   const isDone = p.gameFinished;
@@ -370,7 +384,9 @@ function pickHtml(p) {
   const isOver2 = p.wagerType === 'over';
   const underBusted2 = !isOver2 && isLive && cur2 > lin2;
   const overWinning2 = isOver2 && isLive && winning2;
-  const isTeamPick = p.source === 'underdog' && !p.imgUrl;
+  const isTeamPick = !p.imgUrl && p.awayAbb && p.homeAbb;
+  const isSpread = isTeamPick && /spread|margin.*victory/i.test(p.statName||'');
+  const isML     = isTeamPick && /moneyline|^ml$/i.test(p.statName||'');
 
   let ringCls = '';
   if (isWon || (isDone && winning2))                                          ringCls = 'won-r';
@@ -381,10 +397,15 @@ function pickHtml(p) {
 
   const _lg = (p.league||'').toLowerCase();
   const _isTotal = /total|o\/u|runs|goals/i.test(p.statName||'');
-  const _teamAbb = (p.name||'').toUpperCase().includes((p.awayAbb||'').toUpperCase()) ? p.awayAbb : p.homeAbb;
+  const _nl = (p.name||'').toUpperCase(), _al = (p.awayAbb||'').toUpperCase(), _hl = (p.homeAbb||'').toUpperCase();
+  const _awayName = (p.awayName||'').toUpperCase(), _homeName = (p.homeName||'').toUpperCase();
+  const _teamAbb = p.teamAbb
+    || ((_awayName && _nl.includes(_awayName)) ? p.awayAbb : '')
+    || ((_homeName && _nl.includes(_homeName)) ? p.homeAbb : '')
+    || ((_nl === _al || (_al && _nl.includes(_al)) || (_al && _al.includes(_nl))) ? p.awayAbb : p.homeAbb);
   const avHtml = p.imgUrl
     ? `<img class="av ${ringCls}" src="${p.imgUrl}" onerror="this.outerHTML='<div class=\\'av-ph\\'>👤</div>'">`
-    : (p.source === 'underdog' && p.awayAbb && p.homeAbb)
+    : (isTeamPick)
     ? _isTotal
       ? `<div class="av-teams ${ringCls}"><img src="https://a.espncdn.com/i/teamlogos/${_lg}/500/${p.awayAbb.toLowerCase()}.png" onerror="this.style.display='none'"><img src="https://a.espncdn.com/i/teamlogos/${_lg}/500/${p.homeAbb.toLowerCase()}.png" onerror="this.style.display='none'"></div>`
       : `<div class="av-logo ${ringCls}"><img src="https://a.espncdn.com/i/teamlogos/${_lg}/500/${_teamAbb.toLowerCase()}.png" onerror="this.parentElement.outerHTML='<div class=\\'av-ph\\'>👤</div>'"></div>`
@@ -394,13 +415,13 @@ function pickHtml(p) {
   if (p.awayAbb && p.homeAbb) {
     if (isLive) {
       // Live: show scores and quarter/clock in gold
-      const isHalftime = p.clock === '00:00' && (p.period === 2 || p.period === '2') && p.punit === 'quarter';
-      const isHalfOrEnd = p.clock === '00:00';
+      const _clockZero = p.clock === '00:00' || p.clock === '0:00';
+      const isHalftime = _clockZero && (p.period == 2) && p.punit === 'quarter';
       let pl;
       if (isHalftime) pl = 'Halftime';
-      else pl = p.punit==='quarter'?`Q${p.period}`:p.punit==='half'?`H${p.period}`:`P${p.period}`;
-      const clockStr = (isHalftime || isHalfOrEnd) ? '' : p.clock ? ` · ${p.clock}` : '';
-      gameStr = `<span class="league-tag">${p.league}</span>${p.awayAbb} ${p.awaySc} @ ${p.homeAbb} ${p.homeSc} <span class="live-tag">${pl}${clockStr}</span>`;
+      else pl = p.punit==='quarter'?`Q${p.period}`:p.punit==='half'?`H${p.period}`:p.punit==='inning'?`I${p.period}`:`P${p.period}`;
+      const clockStr = (isHalftime || _clockZero) ? '' : p.clock ? ` · ${p.clock}` : '';
+      gameStr = `<span class="league-tag">${p.league}</span>${p.awayAbb} ${p.awaySc} @ ${p.homeAbb} ${p.homeSc} <span class="live-tag">${pl}${clockStr}</span>${p.isTimeout ? ' <span class="event-badge">⏱</span>' : ''}${p.inBonus ? ' <span class="event-badge">F</span>' : ''}`;
     } else if (isPre && p.startTime) {
       // Pre-game: show teams and start time in gold
       gameStr = `<span class="league-tag">${p.league}</span>${p.awayAbb} @ ${p.homeAbb} <span class="live-tag">${p.startTime}</span>`;
@@ -428,8 +449,9 @@ function pickHtml(p) {
     else if (isLost||(isDone&&!win_f)||(!isTeamPick&&underBusted_f)) fc='c-red';
     else if (!isTeamPick&&isLive&&isOver_f&&win_f)                   fc='c-green';
     else if (isLive)                                                  fc='c-white';
+    const spreadLabel = `${Number(p.line) >= 0 ? '+' : '-'}${Math.abs(Number(p.line))}`;
     progHtml = `<div class="prog-track"><div class="prog-fill ${fc}" style="width:${pct}%"></div></div>
-    <div class="prog-labels"><span class="cur">${cur%1===0?cur:cur.toFixed(1)}</span><span class="lv">/ ${lin}</span></div>`;
+    <div class="prog-labels"><span class="cur">${cur%1===0?cur:cur.toFixed(1)}</span><span class="lv">/ ${isSpread?spreadLabel:lin}</span></div>`;
   }
 
   const dir = p.wagerType==='over'?'↑':'↓';
@@ -456,20 +478,28 @@ function pickHtml(p) {
     'H+R+RBI': 'HRR',
   };
   const statDisplay = statAbbr[p.statName] || p.statName;
+  const spreadLine = Number(p.line);
+  const spreadLabel = `${spreadLine >= 0 ? '+' : '-'}${Math.abs(spreadLine)}`;
+  const spreadDir = spreadLine < 0 ? '↓' : '↑';
+  const spreadDirCls = spreadLine < 0 ? 'down' : 'up';
+  const lineNum = isML ? 'WIN' : isSpread ? spreadLabel : p.line;
+  const lineDir = isML ? '' : isSpread ? spreadDir : dir;
+  const lineDirCls = isML ? '' : isSpread ? spreadDirCls : dirCls;
+  const lineStat = isSpread ? 'SPREAD' : isML ? 'ML' : (isTeamPick && _isTotal) ? 'TOTAL' : statDisplay;
   const resHtml = isWon?'<div class="res-lbl w">✓ WON</div>':isLost?'<div class="res-lbl l">✗ LOST</div>':'';
 
   const pickData = encodeURIComponent(JSON.stringify({league:p.league,awayAbb:p.awayAbb,homeAbb:p.homeAbb,name:p.name}));
   return `<div class="pick" onclick="openPick('${pickData}')">
     ${avHtml}
     <div class="mid">
-      <div class="name-row"><div class="pname">${p.name}</div>${p.pos?`<div class="pbadge">${p.pos}</div>`:''} ${(p.playerOut && isLive) ? '<div class="out-badge">OUT</div>' : ''}</div>
+      <div class="name-row"><div class="pname">${p.name}</div>${p.pos?`<div class="pbadge">${p.pos}</div>`:''} ${(p.playerOut && isLive) ? '<div class="out-badge">SUBBED</div>' : ''}</div>
       ${gameStr?`<div class="game-row">${gameStr}</div>`:''}
       ${progHtml}
     </div>
-    <div class="linebox ${boxCls}">
-      <div class="dir ${dirCls}">${dir}</div>
-      <div class="linenum">${p.line}</div>
-      <div class="statlbl">${odds}${statDisplay}</div>
+    <div class="linebox ${boxCls}" onmouseenter="showTip(this,${_tipIdx})" onmouseleave="hideTip()">
+      ${lineDir ? `<div class="dir ${lineDirCls}">${lineDir}</div>` : ''}
+      <div class="linenum">${lineNum}</div>
+      <div class="statlbl">${lineStat}</div>
       ${resHtml}
     </div>
   </div>`;
